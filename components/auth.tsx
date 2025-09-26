@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/hooks/useAuth"
 import { checkSupabaseConnection, testSupabaseConnection } from "@/lib/supabase"
+import { CheckCircleIcon, XCircleIcon, RefreshCwIcon, WifiIcon } from "lucide-react"
 
 export default function Auth() {
   const { signIn, signUp, error: authError } = useAuth()
@@ -18,17 +19,28 @@ export default function Auth() {
   const [message, setMessage] = useState("")
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const [connectionTest, setConnectionTest] = useState<any>(null)
+  const [testingConnection, setTestingConnection] = useState(false)
 
   useEffect(() => {
     // Obtener información de debug
     const config = checkSupabaseConnection()
     setDebugInfo(config)
 
-    // Probar conexión
-    testSupabaseConnection().then((result) => {
-      setConnectionTest(result)
-    })
+    // Probar conexión automáticamente al cargar
+    runConnectionTest()
   }, [])
+
+  const runConnectionTest = async () => {
+    setTestingConnection(true)
+    try {
+      const result = await testSupabaseConnection()
+      setConnectionTest(result)
+    } catch (error) {
+      setConnectionTest({ success: false, error: "Error inesperado al probar conexión" })
+    } finally {
+      setTestingConnection(false)
+    }
+  }
 
   // Si hay un error de configuración de Supabase, mostrarlo
   if (authError) {
@@ -67,6 +79,25 @@ export default function Auth() {
                 {connectionTest.error && <p>Error: {connectionTest.error}</p>}
               </div>
             )}
+
+            <Button
+              onClick={runConnectionTest}
+              disabled={testingConnection}
+              className="w-full mb-4 bg-transparent"
+              variant="outline"
+            >
+              {testingConnection ? (
+                <>
+                  <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
+                  Probando Conexión...
+                </>
+              ) : (
+                <>
+                  <WifiIcon className="h-4 w-4 mr-2" />
+                  Probar Conexión a Supabase
+                </>
+              )}
+            </Button>
 
             <div className="mt-4 text-sm text-gray-600">
               <p className="font-semibold">Pasos para solucionar:</p>
@@ -129,21 +160,90 @@ export default function Auth() {
           <CardDescription>Sistema de Gestión de Presupuestos</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Panel de Estado de Conexión */}
+          <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-sm text-gray-700">Estado de Conexión</h3>
+              <Button
+                onClick={runConnectionTest}
+                disabled={testingConnection}
+                size="sm"
+                variant="outline"
+                className="h-8 bg-transparent"
+              >
+                {testingConnection ? (
+                  <RefreshCwIcon className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCwIcon className="h-3 w-3" />
+                )}
+              </Button>
+            </div>
+
+            {/* Información de configuración */}
+            {debugInfo && (
+              <div className="space-y-2 mb-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span>URL Configurada:</span>
+                  <span className="flex items-center">
+                    {debugInfo.hasUrl ? (
+                      <CheckCircleIcon className="h-3 w-3 text-green-500 mr-1" />
+                    ) : (
+                      <XCircleIcon className="h-3 w-3 text-red-500 mr-1" />
+                    )}
+                    {debugInfo.hasUrl ? "Sí" : "No"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span>API Key Configurada:</span>
+                  <span className="flex items-center">
+                    {debugInfo.hasKey ? (
+                      <CheckCircleIcon className="h-3 w-3 text-green-500 mr-1" />
+                    ) : (
+                      <XCircleIcon className="h-3 w-3 text-red-500 mr-1" />
+                    )}
+                    {debugInfo.hasKey ? `Sí (${debugInfo.keyLength} chars)` : "No"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Resultado del test de conexión */}
+            {connectionTest && (
+              <div
+                className={`p-3 rounded-md text-sm ${
+                  connectionTest.success
+                    ? "bg-green-100 text-green-800 border border-green-200"
+                    : "bg-red-100 text-red-800 border border-red-200"
+                }`}
+              >
+                <div className="flex items-center mb-1">
+                  {connectionTest.success ? (
+                    <CheckCircleIcon className="h-4 w-4 mr-2" />
+                  ) : (
+                    <XCircleIcon className="h-4 w-4 mr-2" />
+                  )}
+                  <span className="font-semibold">
+                    {connectionTest.success ? "Conexión Exitosa" : "Error de Conexión"}
+                  </span>
+                </div>
+                {connectionTest.error && <p className="text-xs mt-1">Error: {connectionTest.error}</p>}
+                {connectionTest.success && <p className="text-xs mt-1">✅ Supabase está funcionando correctamente</p>}
+              </div>
+            )}
+
+            {testingConnection && (
+              <div className="flex items-center justify-center p-3 text-sm text-gray-600">
+                <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
+                Probando conexión con Supabase...
+              </div>
+            )}
+          </div>
+
           {/* Información de debug si hay problemas */}
           {debugInfo && !debugInfo.isConfigured && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-sm text-red-800 font-medium">⚠️ Problema de Configuración</p>
-              <p className="text-xs text-red-700 mt-1">
-                URL: {debugInfo.hasUrl ? "✅" : "❌"} | Key: {debugInfo.hasKey ? "✅" : "❌"} | Length:{" "}
-                {debugInfo.keyLength}
-              </p>
-            </div>
-          )}
-
-          {connectionTest && !connectionTest.success && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-800 font-medium">❌ Error de Conexión</p>
-              <p className="text-xs text-red-700 mt-1">{connectionTest.error}</p>
+              <p className="text-xs text-red-700 mt-1">Revisa tu archivo .env.local y reinicia el servidor</p>
             </div>
           )}
 
@@ -187,9 +287,16 @@ export default function Auth() {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || (connectionTest && !connectionTest.success)}
+                >
                   {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
                 </Button>
+                {connectionTest && !connectionTest.success && (
+                  <p className="text-xs text-red-600 text-center">⚠️ Primero resuelve los problemas de conexión</p>
+                )}
               </form>
             </TabsContent>
 
@@ -225,9 +332,16 @@ export default function Auth() {
                     minLength={6}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || (connectionTest && !connectionTest.success)}
+                >
                   {loading ? "Creando cuenta..." : "Crear Cuenta"}
                 </Button>
+                {connectionTest && !connectionTest.success && (
+                  <p className="text-xs text-red-600 text-center">⚠️ Primero resuelve los problemas de conexión</p>
+                )}
               </form>
             </TabsContent>
           </Tabs>
@@ -244,16 +358,30 @@ export default function Auth() {
             </div>
           )}
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-2">
             <Button
               variant="outline"
               onClick={() => {
                 setEmail("admin")
                 setPassword("Coromoto_09")
               }}
-              className="text-sm"
+              className="text-sm w-full"
             >
               Usar Credenciales de Admin
+            </Button>
+
+            <Button onClick={runConnectionTest} disabled={testingConnection} variant="ghost" className="text-sm w-full">
+              {testingConnection ? (
+                <>
+                  <RefreshCwIcon className="h-4 w-4 mr-2 animate-spin" />
+                  Probando Conexión...
+                </>
+              ) : (
+                <>
+                  <WifiIcon className="h-4 w-4 mr-2" />
+                  Probar Conexión Manual
+                </>
+              )}
             </Button>
           </div>
         </CardContent>

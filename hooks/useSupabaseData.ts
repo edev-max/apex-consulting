@@ -54,6 +54,47 @@ export const useSupabaseData = () => {
   const [hourEntries, setHourEntries] = useState<HourEntry[]>([])
   const [hourQuotes, setHourQuotes] = useState<HourQuote[]>([])
   const [loading, setLoading] = useState(true)
+  const [tablesExist, setTablesExist] = useState(false)
+  const [dbError, setDbError] = useState<string | null>(null)
+
+  // Verificar si las tablas existen
+  const checkTablesExist = async () => {
+    if (!user) return false
+
+    try {
+      // Intentar hacer una consulta simple a cada tabla
+      const tables = ["budgets", "clients", "hour_entries", "hour_quotes"]
+      const tableChecks = await Promise.all(
+        tables.map(async (table) => {
+          try {
+            const { error } = await supabase.from(table).select("count", { count: "exact", head: true })
+            return { table, exists: !error, error: error?.message }
+          } catch (err) {
+            return { table, exists: false, error: "Table check failed" }
+          }
+        }),
+      )
+
+      const missingTables = tableChecks.filter((check) => !check.exists)
+
+      if (missingTables.length > 0) {
+        setDbError(
+          `Tablas faltantes: ${missingTables.map((t) => t.table).join(", ")}. Ejecuta los scripts SQL primero.`,
+        )
+        setTablesExist(false)
+        return false
+      }
+
+      setTablesExist(true)
+      setDbError(null)
+      return true
+    } catch (error) {
+      console.error("Error checking tables:", error)
+      setDbError("Error verificando la estructura de la base de datos")
+      setTablesExist(false)
+      return false
+    }
+  }
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -68,10 +109,20 @@ export const useSupabaseData = () => {
     if (!user) return
 
     setLoading(true)
+
+    // Primero verificar que las tablas existan
+    const tablesOk = await checkTablesExist()
+
+    if (!tablesOk) {
+      setLoading(false)
+      return
+    }
+
     try {
       await Promise.all([loadBudgets(), loadClients(), loadHourEntries(), loadHourQuotes()])
     } catch (error) {
       console.error("Error loading data:", error)
+      setDbError("Error cargando datos de la base de datos")
     } finally {
       setLoading(false)
     }
@@ -79,7 +130,7 @@ export const useSupabaseData = () => {
 
   // Funciones para presupuestos
   const loadBudgets = async () => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { data, error } = await supabase
@@ -90,6 +141,9 @@ export const useSupabaseData = () => {
 
       if (error) {
         console.error("Error loading budgets:", error)
+        if (error.message.includes("does not exist") || error.message.includes("schema cache")) {
+          setDbError("La tabla 'budgets' no existe. Ejecuta los scripts SQL primero.")
+        }
         return
       }
 
@@ -108,6 +162,7 @@ export const useSupabaseData = () => {
       )
     } catch (error) {
       console.error("Error loading budgets:", error)
+      setDbError("Error cargando presupuestos")
     }
   }
 
@@ -119,7 +174,7 @@ export const useSupabaseData = () => {
     reportNumber: number
     total: number
   }) => {
-    if (!user) return null
+    if (!user || !tablesExist) return null
 
     try {
       const { data, error } = await supabase
@@ -150,7 +205,7 @@ export const useSupabaseData = () => {
   }
 
   const updateBudget = async (budgetId: string, updates: Partial<Budget>) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase
@@ -178,7 +233,7 @@ export const useSupabaseData = () => {
   }
 
   const deleteBudget = async (budgetId: string) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("budgets").delete().eq("id", budgetId).eq("user_id", user.id)
@@ -195,7 +250,7 @@ export const useSupabaseData = () => {
   }
 
   const getNextBudgetNumber = async () => {
-    if (!user) return 589
+    if (!user || !tablesExist) return 589
 
     try {
       const { data, error } = await supabase.rpc("get_next_budget_number", { user_uuid: user.id })
@@ -214,7 +269,7 @@ export const useSupabaseData = () => {
 
   // Funciones para clientes
   const loadClients = async () => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { data, error } = await supabase
@@ -235,7 +290,7 @@ export const useSupabaseData = () => {
   }
 
   const saveClient = async (clientData: { name: string; email: string }) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("clients").insert({
@@ -256,7 +311,7 @@ export const useSupabaseData = () => {
   }
 
   const updateClient = async (clientId: string, updates: Partial<Client>) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("clients").update(updates).eq("id", clientId).eq("user_id", user.id)
@@ -273,7 +328,7 @@ export const useSupabaseData = () => {
   }
 
   const deleteClient = async (clientId: string) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("clients").delete().eq("id", clientId).eq("user_id", user.id)
@@ -291,7 +346,7 @@ export const useSupabaseData = () => {
 
   // Funciones para registros de horas
   const loadHourEntries = async () => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { data, error } = await supabase
@@ -318,7 +373,7 @@ export const useSupabaseData = () => {
     description: string
     project: string
   }) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("hour_entries").insert({
@@ -342,7 +397,7 @@ export const useSupabaseData = () => {
   }
 
   const deleteHourEntry = async (entryId: string) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("hour_entries").delete().eq("id", entryId).eq("user_id", user.id)
@@ -360,7 +415,7 @@ export const useSupabaseData = () => {
 
   // Funciones para cotizaciones de horas
   const loadHourQuotes = async () => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { data, error } = await supabase
@@ -387,7 +442,7 @@ export const useSupabaseData = () => {
     description: string
     project: string
   }) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("hour_quotes").insert({
@@ -411,7 +466,7 @@ export const useSupabaseData = () => {
   }
 
   const updateHourQuote = async (quoteId: string, updates: Partial<HourQuote>) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("hour_quotes").update(updates).eq("id", quoteId).eq("user_id", user.id)
@@ -428,7 +483,7 @@ export const useSupabaseData = () => {
   }
 
   const deleteHourQuote = async (quoteId: string) => {
-    if (!user) return
+    if (!user || !tablesExist) return
 
     try {
       const { error } = await supabase.from("hour_quotes").delete().eq("id", quoteId).eq("user_id", user.id)
@@ -451,6 +506,8 @@ export const useSupabaseData = () => {
     hourEntries,
     hourQuotes,
     loading,
+    tablesExist,
+    dbError,
 
     // Budget functions
     saveBudget,
@@ -474,5 +531,6 @@ export const useSupabaseData = () => {
 
     // Utility
     loadAllData,
+    checkTablesExist,
   }
 }

@@ -23,19 +23,98 @@ export const checkSupabaseConnection = () => {
   }
 }
 
-// Función para probar la conexión
+// Función mejorada para probar la conexión
 export const testSupabaseConnection = async () => {
   try {
-    const { data, error } = await supabase.from("budgets").select("count", { count: "exact", head: true })
-    if (error) {
-      console.error("Supabase connection test failed:", error)
-      return { success: false, error: error.message }
+    console.log("🔍 Iniciando test de conexión a Supabase...")
+
+    // Test 1: Verificar configuración básica
+    const config = checkSupabaseConnection()
+    if (!config.isConfigured) {
+      return {
+        success: false,
+        error: "Configuración incompleta - URL o API Key faltante",
+        details: config,
+      }
     }
-    console.log("Supabase connection test successful")
-    return { success: true, data }
-  } catch (err) {
-    console.error("Supabase connection test error:", err)
-    return { success: false, error: "Connection failed" }
+
+    // Test 2: Probar conexión básica con auth
+    console.log("🔍 Probando conexión de autenticación...")
+    const { data: authData, error: authError } = await supabase.auth.getSession()
+    if (authError) {
+      console.error("❌ Error en auth:", authError)
+      return {
+        success: false,
+        error: `Error de autenticación: ${authError.message}`,
+        details: { authError },
+      }
+    }
+
+    // Test 3: Probar acceso a la base de datos
+    console.log("🔍 Probando acceso a base de datos...")
+    const { data, error } = await supabase.from("budgets").select("count", { count: "exact", head: true })
+
+    if (error) {
+      console.error("❌ Error en base de datos:", error)
+      return {
+        success: false,
+        error: `Error de base de datos: ${error.message}`,
+        details: { dbError: error },
+      }
+    }
+
+    // Test 4: Verificar que las tablas existen
+    console.log("🔍 Verificando estructura de tablas...")
+    const tables = ["budgets", "clients", "hour_entries", "hour_quotes"]
+    const tableTests = []
+
+    for (const table of tables) {
+      try {
+        const { error: tableError } = await supabase.from(table).select("count", { count: "exact", head: true })
+
+        tableTests.push({
+          table,
+          exists: !tableError,
+          error: tableError?.message,
+        })
+      } catch (err) {
+        tableTests.push({
+          table,
+          exists: false,
+          error: "Error al verificar tabla",
+        })
+      }
+    }
+
+    const missingTables = tableTests.filter((t) => !t.exists)
+    if (missingTables.length > 0) {
+      console.warn("⚠️ Tablas faltantes:", missingTables)
+      return {
+        success: false,
+        error: `Tablas faltantes: ${missingTables.map((t) => t.table).join(", ")}`,
+        details: { tableTests, missingTables },
+      }
+    }
+
+    console.log("✅ Test de conexión exitoso")
+    return {
+      success: true,
+      message: "Conexión exitosa - Todas las verificaciones pasaron",
+      details: {
+        config,
+        authStatus: "OK",
+        dbStatus: "OK",
+        tablesStatus: "OK",
+        tableTests,
+      },
+    }
+  } catch (err: any) {
+    console.error("❌ Error inesperado en test de conexión:", err)
+    return {
+      success: false,
+      error: `Error inesperado: ${err.message || "Error desconocido"}`,
+      details: { unexpectedError: err },
+    }
   }
 }
 

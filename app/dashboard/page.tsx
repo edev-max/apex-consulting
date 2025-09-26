@@ -24,6 +24,8 @@ import {
   CheckIcon,
   AlertCircleIcon,
   LogOutIcon,
+  DatabaseIcon,
+  AlertTriangleIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
@@ -80,6 +82,8 @@ export default function Dashboard() {
     hourEntries,
     hourQuotes,
     loading,
+    tablesExist,
+    dbError,
     saveClient,
     updateClient,
     deleteClient,
@@ -90,6 +94,7 @@ export default function Dashboard() {
     deleteHourQuote,
     updateBudget,
     deleteBudget,
+    checkTablesExist,
   } = useSupabaseData()
 
   // Estados para formularios
@@ -125,6 +130,209 @@ export default function Dashboard() {
     rate: 0,
     unit: "",
   })
+
+  const handleSignOut = async () => {
+    if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
+      await signOut()
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando datos...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Si hay error de base de datos (tablas no existen)
+  if (dbError || !tablesExist) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <Card className="w-full max-w-2xl">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <DatabaseIcon className="h-8 w-8 text-red-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-red-600">Base de Datos No Configurada</CardTitle>
+            <CardDescription>Las tablas de la base de datos no existen aún</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start">
+                <AlertTriangleIcon className="h-5 w-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <p className="text-red-800 font-semibold mb-2">Error:</p>
+                  <p className="text-red-700 text-sm">{dbError}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-blue-800 mb-3">📋 Pasos para Configurar la Base de Datos:</h3>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-blue-700">
+                <li>
+                  Ve a tu proyecto de Supabase: <strong>https://supabase.com/dashboard</strong>
+                </li>
+                <li>
+                  Navega a <strong>SQL Editor</strong> en el menú lateral
+                </li>
+                <li>Ejecuta los siguientes scripts en orden:</li>
+              </ol>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 border rounded-lg p-4">
+                <h4 className="font-semibold text-gray-800 mb-2">1️⃣ Script: Crear Tablas</h4>
+                <div className="bg-gray-800 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto">
+                  <pre>{`-- Crear tabla de presupuestos
+CREATE TABLE IF NOT EXISTS budgets (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  number VARCHAR(50) NOT NULL,
+  client_name VARCHAR(255) NOT NULL,
+  project_name VARCHAR(255) NOT NULL,
+  project_description TEXT,
+  total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'overdue')),
+  items JSONB,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crear tabla de clientes
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  total_hours INTEGER NOT NULL DEFAULT 0,
+  consumed_hours INTEGER NOT NULL DEFAULT 0,
+  remaining_hours INTEGER NOT NULL DEFAULT 0,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crear tabla de registros de horas
+CREATE TABLE IF NOT EXISTS hour_entries (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
+  client_name VARCHAR(255) NOT NULL,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  hours DECIMAL(4,2) NOT NULL,
+  description TEXT NOT NULL,
+  project VARCHAR(255) NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crear tabla de cotizaciones de horas
+CREATE TABLE IF NOT EXISTS hour_quotes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
+  client_name VARCHAR(255) NOT NULL,
+  requested_hours INTEGER NOT NULL,
+  description TEXT NOT NULL,
+  project VARCHAR(255) NOT NULL,
+  request_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  approved_date DATE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);`}</pre>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 border rounded-lg p-4">
+                <h4 className="font-semibold text-gray-800 mb-2">2️⃣ Script: Configurar Seguridad (RLS)</h4>
+                <div className="bg-gray-800 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto">
+                  <pre>{`-- Habilitar RLS en todas las tablas
+ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hour_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hour_quotes ENABLE ROW LEVEL SECURITY;
+
+-- Políticas para budgets
+CREATE POLICY "Users can manage own budgets" ON budgets
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Políticas para clients
+CREATE POLICY "Users can manage own clients" ON clients
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Políticas para hour_entries
+CREATE POLICY "Users can manage own hour entries" ON hour_entries
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Políticas para hour_quotes
+CREATE POLICY "Users can manage own hour quotes" ON hour_quotes
+  FOR ALL USING (auth.uid() = user_id);`}</pre>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 border rounded-lg p-4">
+                <h4 className="font-semibold text-gray-800 mb-2">3️⃣ Script: Funciones Auxiliares</h4>
+                <div className="bg-gray-800 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto">
+                  <pre>{`-- Función para actualizar updated_at automáticamente
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Triggers para actualizar updated_at
+CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Función para obtener el siguiente número de presupuesto
+CREATE OR REPLACE FUNCTION get_next_budget_number(user_uuid UUID)
+RETURNS INTEGER AS $$
+DECLARE
+    last_number INTEGER;
+BEGIN
+    SELECT COALESCE(MAX(CAST(number AS INTEGER)), 588) INTO last_number
+    FROM budgets 
+    WHERE user_id = user_uuid 
+    AND number ~ '^[0-9]+$';
+    
+    RETURN last_number + 1;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <Button onClick={checkTablesExist} className="flex-1">
+                <DatabaseIcon className="h-4 w-4 mr-2" />
+                Verificar Base de Datos
+              </Button>
+              <Button onClick={handleSignOut} variant="outline" className="flex-1 bg-transparent">
+                <LogOutIcon className="h-4 w-4 mr-2" />
+                Cerrar Sesión
+              </Button>
+            </div>
+
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800 text-sm">
+                <strong>💡 Tip:</strong> Después de ejecutar los scripts, haz clic en "Verificar Base de Datos" para
+                comprobar que todo esté configurado correctamente.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   // Funciones para manejar presupuestos
   const toggleBudgetStatus = async (budgetId: string) => {
@@ -606,23 +814,6 @@ export default function Dashboard() {
 
     reportWindow.document.write(reportHTML)
     reportWindow.document.close()
-  }
-
-  const handleSignOut = async () => {
-    if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
-      await signOut()
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando datos...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
