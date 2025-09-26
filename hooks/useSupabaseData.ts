@@ -47,12 +47,26 @@ interface HourQuote {
   approved_date?: string
 }
 
+interface CompanySettings {
+  id: string
+  company_name: string
+  company_logo_url: string | null
+}
+
+interface UserProfile {
+  id: string
+  avatar_url: string | null
+  full_name: string | null
+}
+
 export const useSupabaseData = () => {
   const { user } = useAuth()
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [hourEntries, setHourEntries] = useState<HourEntry[]>([])
   const [hourQuotes, setHourQuotes] = useState<HourQuote[]>([])
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [tablesExist, setTablesExist] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
@@ -63,7 +77,7 @@ export const useSupabaseData = () => {
 
     try {
       // Intentar hacer una consulta simple a cada tabla
-      const tables = ["budgets", "clients", "hour_entries", "hour_quotes"]
+      const tables = ["budgets", "clients", "hour_entries", "hour_quotes", "company_settings", "user_profiles"]
       const tableChecks = await Promise.all(
         tables.map(async (table) => {
           try {
@@ -119,7 +133,14 @@ export const useSupabaseData = () => {
     }
 
     try {
-      await Promise.all([loadBudgets(), loadClients(), loadHourEntries(), loadHourQuotes()])
+      await Promise.all([
+        loadBudgets(),
+        loadClients(),
+        loadHourEntries(),
+        loadHourQuotes(),
+        loadCompanySettings(),
+        loadUserProfile(),
+      ])
     } catch (error) {
       console.error("Error loading data:", error)
       setDbError("Error cargando datos de la base de datos")
@@ -499,12 +520,130 @@ export const useSupabaseData = () => {
     }
   }
 
+  // Funciones para configuración de empresa
+  const loadCompanySettings = async () => {
+    if (!user || !tablesExist) return
+
+    try {
+      const { data, error } = await supabase.from("company_settings").select("*").eq("user_id", user.id).single()
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error loading company settings:", error)
+        return
+      }
+
+      setCompanySettings(data)
+    } catch (error) {
+      console.error("Error loading company settings:", error)
+    }
+  }
+
+  const saveCompanySettings = async (settings: { company_name: string; company_logo_url?: string }) => {
+    if (!user || !tablesExist) return null
+
+    try {
+      const { data, error } = await supabase
+        .from("company_settings")
+        .upsert({
+          user_id: user.id,
+          company_name: settings.company_name,
+          company_logo_url: settings.company_logo_url || null,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error saving company settings:", error)
+        return null
+      }
+
+      setCompanySettings(data)
+      return data
+    } catch (error) {
+      console.error("Error saving company settings:", error)
+      return null
+    }
+  }
+
+  // Funciones para perfil de usuario
+  const loadUserProfile = async () => {
+    if (!user || !tablesExist) return
+
+    try {
+      const { data, error } = await supabase.from("user_profiles").select("*").eq("user_id", user.id).single()
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error loading user profile:", error)
+        return
+      }
+
+      setUserProfile(data)
+    } catch (error) {
+      console.error("Error loading user profile:", error)
+    }
+  }
+
+  const saveUserProfile = async (profile: { avatar_url?: string; full_name?: string }) => {
+    if (!user || !tablesExist) return null
+
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .upsert({
+          user_id: user.id,
+          avatar_url: profile.avatar_url || null,
+          full_name: profile.full_name || null,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error saving user profile:", error)
+        return null
+      }
+
+      setUserProfile(data)
+      return data
+    } catch (error) {
+      console.error("Error saving user profile:", error)
+      return null
+    }
+  }
+
+  // Función para subir archivos a Supabase Storage
+  const uploadFile = async (file: File, bucket: string, path: string) => {
+    if (!user) return null
+
+    try {
+      const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
+        cacheControl: "3600",
+        upsert: true,
+      })
+
+      if (error) {
+        console.error("Error uploading file:", error)
+        return null
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(bucket).getPublicUrl(path)
+
+      return publicUrl
+    } catch (error) {
+      console.error("Error uploading file:", error)
+      return null
+    }
+  }
+
   return {
     // Data
     budgets,
     clients,
     hourEntries,
     hourQuotes,
+    companySettings,
+    userProfile,
     loading,
     tablesExist,
     dbError,
@@ -529,8 +668,17 @@ export const useSupabaseData = () => {
     updateHourQuote,
     deleteHourQuote,
 
+    // Company settings functions
+    loadCompanySettings,
+    saveCompanySettings,
+
+    // User profile functions
+    loadUserProfile,
+    saveUserProfile,
+
     // Utility
     loadAllData,
     checkTablesExist,
+    uploadFile,
   }
 }

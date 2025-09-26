@@ -1,7 +1,19 @@
 "use client"
 
+import { BreadcrumbPage } from "@/components/ui/breadcrumb"
+
+import { BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+
+import { BreadcrumbLink } from "@/components/ui/breadcrumb"
+
+import { BreadcrumbItem } from "@/components/ui/breadcrumb"
+
+import { BreadcrumbList } from "@/components/ui/breadcrumb"
+
+import { Breadcrumb } from "@/components/ui/breadcrumb"
+
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -11,14 +23,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import {
   PlusIcon,
   EyeIcon,
@@ -31,6 +35,7 @@ import {
   CheckIcon,
   DatabaseIcon,
   AlertTriangleIcon,
+  UserIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
@@ -42,7 +47,7 @@ interface Budget {
   id: string
   number: string
   client_name: string
-  project_name: string
+  project_name?: string
   project_description?: string
   total: number
   date: string
@@ -81,6 +86,16 @@ interface HourQuote {
   approved_date?: string
 }
 
+interface CompanySettings {
+  company_name: string
+  company_logo_url?: string
+}
+
+interface UserProfile {
+  avatar_url?: string
+  full_name?: string
+}
+
 export default function Dashboard() {
   // Estados para configuración
   const [newPassword, setNewPassword] = useState("")
@@ -88,6 +103,16 @@ export default function Dashboard() {
   const [configMessage, setConfigMessage] = useState("")
   const [configLoading, setConfigLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("dashboard")
+
+  // Estados para configuración de empresa y perfil
+  const [companyName, setCompanyName] = useState("")
+  const [companyLogo, setCompanyLogo] = useState<File | null>(null)
+  const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [fullName, setFullName] = useState("")
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const { user, updatePassword } = useAuth()
   const {
@@ -109,6 +134,11 @@ export default function Dashboard() {
     updateBudget,
     deleteBudget,
     checkTablesExist,
+    companySettings,
+    userProfile,
+    saveCompanySettings,
+    saveUserProfile,
+    uploadFile,
   } = useSupabaseData()
 
   // Estados para formularios
@@ -145,6 +175,21 @@ export default function Dashboard() {
     unit: "",
   })
 
+  // Cargar configuraciones cuando cambien
+  useEffect(() => {
+    if (companySettings) {
+      setCompanyName(companySettings.company_name)
+      setCompanyLogoPreview(companySettings.company_logo_url)
+    }
+  }, [companySettings])
+
+  useEffect(() => {
+    if (userProfile) {
+      setFullName(userProfile.full_name || "")
+      setAvatarPreview(userProfile.avatar_url)
+    }
+  }, [userProfile])
+
   // Agregar función para cambiar contraseña
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -173,6 +218,95 @@ export default function Dashboard() {
     }
 
     setConfigLoading(false)
+  }
+
+  // Agregar funciones para manejar archivos:
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setCompanyLogo(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setCompanyLogoPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAvatarFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setAvatarPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const saveCompanyInfo = async () => {
+    setUploadingLogo(true)
+    setConfigMessage("")
+
+    try {
+      let logoUrl = companySettings?.company_logo_url
+
+      // Subir logo si hay uno nuevo
+      if (companyLogo && user) {
+        const fileName = `${user.id}/logo-${Date.now()}.${companyLogo.name.split(".").pop()}`
+        logoUrl = await uploadFile(companyLogo, "company-logos", fileName)
+      }
+
+      // Guardar configuración
+      const result = await saveCompanySettings({
+        company_name: companyName,
+        company_logo_url: logoUrl || undefined,
+      })
+
+      if (result) {
+        setConfigMessage("¡Información de empresa guardada exitosamente!")
+        setCompanyLogo(null)
+      } else {
+        setConfigMessage("Error al guardar la información de empresa")
+      }
+    } catch (error) {
+      setConfigMessage("Error al guardar la información de empresa")
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const saveUserProfileInfo = async () => {
+    setUploadingAvatar(true)
+    setConfigMessage("")
+
+    try {
+      let avatarUrl = userProfile?.avatar_url
+
+      // Subir avatar si hay uno nuevo
+      if (avatarFile && user) {
+        const fileName = `${user.id}/avatar-${Date.now()}.${avatarFile.name.split(".").pop()}`
+        avatarUrl = await uploadFile(avatarFile, "avatars", fileName)
+      }
+
+      // Guardar perfil
+      const result = await saveUserProfile({
+        avatar_url: avatarUrl || undefined,
+        full_name: fullName,
+      })
+
+      if (result) {
+        setConfigMessage("¡Perfil actualizado exitosamente!")
+        setAvatarFile(null)
+      } else {
+        setConfigMessage("Error al actualizar el perfil")
+      }
+    } catch (error) {
+      setConfigMessage("Error al actualizar el perfil")
+    } finally {
+      setUploadingAvatar(false)
+    }
   }
 
   if (loading) {
@@ -436,9 +570,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
       body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #333; background: white; }
       .container { max-width: 800px; margin: 0 auto; }
       .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
-      .company-info h1 { color: #374151; font-size: 32px; font-weight: bold; margin: 0 0 8px 0; }
-      .company-info .subtitle { font-size: 24px; font-weight: 600; margin: 0 0 4px 0; }
-      .company-info .description { font-size: 14px; color: #6b7280; margin: 0; }
+      .company-info { display: flex; align-items: center; gap: 16px; }
+      .company-logo { width: 60px; height: 60px; object-contain; }
+      .company-text h1 { color: #374151; font-size: 32px; font-weight: bold; margin: 0 0 8px 0; }
+      .company-text .subtitle { font-size: 24px; font-weight: 600; margin: 0 0 4px 0; }
+      .company-text .description { font-size: 14px; color: #6b7280; margin: 0; }
       .date-info { text-align: right; font-size: 14px; color: #6b7280; }
       .date-info p { margin: 0 0 4px 0; }
 
@@ -473,9 +609,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
     <div class="container">
       <div class="header">
         <div class="company-info">
-          <h1>APEX CONSULTING</h1>
-          <div class="subtitle">Presupuesto</div>
-          <div class="description">Presupuesto detallado para el desarrollo de sistemas</div>
+          ${
+            companySettings?.company_logo_url
+              ? `<img src="${companySettings.company_logo_url}" alt="Logo" class="company-logo" />`
+              : ""
+          }
+          <div class="company-text">
+            <h1>${companySettings?.company_name || "APEX CONSULTING"}</h1>
+            <div class="subtitle">Presupuesto</div>
+            <div class="description">Presupuesto detallado para el desarrollo de sistemas</div>
+          </div>
         </div>
         <div class="date-info">
           <p>Fecha: ${new Date(budget.date).toLocaleDateString("es-ES")}</p>
@@ -726,7 +869,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
       </head>
       <body>
         <div class="header">
-          <div class="company-name">APEX CONSULTING</div>
+          <div style="display: flex; align-items: center; gap: 16px; justify-content: center;">
+            ${
+              companySettings?.company_logo_url
+                ? `<img src="${companySettings.company_logo_url}" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;" />`
+                : ""
+            }
+            <div class="company-name">${companySettings?.company_name || "APEX CONSULTING"}</div>
+          </div>
           <div class="report-title">Reporte de Horas de Desarrollo</div>
           <div>Fecha: ${new Date().toLocaleDateString("es-ES")}</div>
         </div>
@@ -1450,6 +1600,107 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
       case "settings":
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Información de la Empresa */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Información de la Empresa</CardTitle>
+                <CardDescription>Configura el logo y nombre de tu empresa</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Nombre de la Empresa</Label>
+                  <Input
+                    id="companyName"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="APEX CONSULTING"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="companyLogo">Logo de la Empresa</Label>
+                  <div className="flex items-center gap-4">
+                    {companyLogoPreview && (
+                      <div className="w-16 h-16 border rounded-lg overflow-hidden bg-gray-50">
+                        <img
+                          src={companyLogoPreview || "/placeholder.svg"}
+                          alt="Logo preview"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <Input
+                        id="companyLogo"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoChange}
+                        className="cursor-pointer"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Formatos: JPG, PNG, SVG. Tamaño recomendado: 200x200px
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Button onClick={saveCompanyInfo} className="w-full" disabled={uploadingLogo}>
+                  {uploadingLogo ? "Guardando..." : "Guardar Información de Empresa"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Perfil de Usuario */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Perfil de Usuario</CardTitle>
+                <CardDescription>Configura tu foto de perfil y información personal</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Nombre Completo</Label>
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Tu nombre completo"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="avatar">Foto de Perfil</Label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 border rounded-full overflow-hidden bg-gray-50 flex items-center justify-center">
+                      {avatarPreview ? (
+                        <img
+                          src={avatarPreview || "/placeholder.svg"}
+                          alt="Avatar preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <UserIcon className="w-8 h-8 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        id="avatar"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="cursor-pointer"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Formatos: JPG, PNG. Tamaño recomendado: 200x200px</p>
+                    </div>
+                  </div>
+                </div>
+
+                <Button onClick={saveUserProfileInfo} className="w-full" disabled={uploadingAvatar}>
+                  {uploadingAvatar ? "Guardando..." : "Guardar Perfil"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Cambiar Contraseña */}
             <Card>
               <CardHeader>
                 <CardTitle>Cambiar Contraseña</CardTitle>
@@ -1485,19 +1736,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
                     {configLoading ? "Actualizando..." : "Cambiar Contraseña"}
                   </Button>
                 </form>
-
-                {configMessage && (
-                  <div
-                    className={`mt-4 p-3 rounded-md text-sm ${
-                      configMessage.includes("exitosamente") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {configMessage}
-                  </div>
-                )}
               </CardContent>
             </Card>
 
+            {/* Información de la Cuenta */}
             <Card>
               <CardHeader>
                 <CardTitle>Información de la Cuenta</CardTitle>
@@ -1528,6 +1770,19 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Mensaje de configuración */}
+            {configMessage && (
+              <div className="lg:col-span-2">
+                <div
+                  className={`p-3 rounded-md text-sm ${
+                    configMessage.includes("exitosamente") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {configMessage}
+                </div>
+              </div>
+            )}
           </div>
         )
 

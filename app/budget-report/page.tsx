@@ -12,6 +12,7 @@ import Link from "next/link"
 import { useBudgetStorage } from "@/hooks/useBudgetStorage"
 import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "next/navigation"
+import { useSupabaseData } from "@/hooks/useSupabaseData"
 
 interface BudgetItem {
   id: string
@@ -26,6 +27,7 @@ export default function InteractiveBudgetReport() {
   const { user } = useAuth()
   const router = useRouter()
   const { saveBudget, getNextBudgetNumber } = useBudgetStorage()
+  const { companySettings: settings } = useSupabaseData()
 
   const [clientName, setClientName] = useState<string>("")
   const [projectName, setProjectName] = useState<string>("")
@@ -255,12 +257,23 @@ export default function InteractiveBudgetReport() {
       <Card className="w-full lg:w-2/3 shadow-lg print:shadow-none print:border-none">
         <CardHeader className="pb-4 border-b">
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 print-company-name">APEX CONSULTING</h1>
-              <CardTitle className="mt-2 text-2xl">Presupuesto</CardTitle>
-              <CardDescription className="text-sm text-gray-600">
-                Presupuesto detallado para el desarrollo de sistemas
-              </CardDescription>
+            <div className="flex items-center gap-4">
+              {settings?.company_logo_url && (
+                <img
+                  src={settings.company_logo_url || "/placeholder.svg"}
+                  alt="Logo"
+                  className="w-16 h-16 object-contain"
+                />
+              )}
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800 print-company-name">
+                  {settings?.company_name || "APEX CONSULTING"}
+                </h1>
+                <CardTitle className="mt-2 text-2xl">Presupuesto</CardTitle>
+                <CardDescription className="text-sm text-gray-600">
+                  Presupuesto detallado para el desarrollo de sistemas
+                </CardDescription>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Fecha: {new Date().toLocaleDateString("es-ES")}</p>
