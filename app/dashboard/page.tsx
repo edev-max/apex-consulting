@@ -1,16 +1,24 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import {
   PlusIcon,
   EyeIcon,
@@ -18,21 +26,16 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  UserIcon,
-  FileTextIcon,
-  TrendingUpIcon,
   TrashIcon,
   PrinterIcon,
   CheckIcon,
-  AlertCircleIcon,
-  LogOutIcon,
   DatabaseIcon,
   AlertTriangleIcon,
-  SettingsIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 import { useSupabaseData } from "@/hooks/useSupabaseData"
+import { AppSidebar } from "@/components/app-sidebar"
 
 interface Budget {
   id: string
@@ -81,11 +84,11 @@ export default function Dashboard() {
   // Estados para configuración
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [currentPassword, setCurrentPassword] = useState("")
   const [configMessage, setConfigMessage] = useState("")
   const [configLoading, setConfigLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState("quotes")
 
-  const { user, signOut, updatePassword } = useAuth()
+  const { user, updatePassword } = useAuth()
   const {
     budgets,
     clients,
@@ -141,12 +144,6 @@ export default function Dashboard() {
     unit: "",
   })
 
-  const handleSignOut = async () => {
-    if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
-      await signOut()
-    }
-  }
-
   // Agregar función para cambiar contraseña
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -172,7 +169,6 @@ export default function Dashboard() {
       setConfigMessage("¡Contraseña actualizada exitosamente!")
       setNewPassword("")
       setConfirmPassword("")
-      setCurrentPassword("")
     }
 
     setConfigLoading(false)
@@ -356,10 +352,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
               <Button onClick={checkTablesExist} className="flex-1">
                 <DatabaseIcon className="h-4 w-4 mr-2" />
                 Verificar Base de Datos
-              </Button>
-              <Button onClick={handleSignOut} variant="outline" className="flex-1 bg-transparent">
-                <LogOutIcon className="h-4 w-4 mr-2" />
-                Cerrar Sesión
               </Button>
             </div>
 
@@ -857,298 +849,94 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
     reportWindow.document.close()
   }
 
-  return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard - APEX CONSULTING</h1>
-            <p className="text-gray-600 mt-2">Gestión de presupuestos y control de horas de desarrollo</p>
-            <p className="text-sm text-gray-500">
-              Usuario: {user?.email === "admin@apexconsulting.com" ? "admin" : user?.email}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleSignOut}
-              className="text-red-600 hover:text-red-700 bg-transparent"
-            >
-              <LogOutIcon className="h-4 w-4 mr-2" />
-              Cerrar Sesión
-            </Button>
-          </div>
-        </div>
+  const getTabTitle = (tab: string) => {
+    switch (tab) {
+      case "quotes":
+        return "Cotizaciones de Horas"
+      case "budgets":
+        return "Gestión de Presupuestos"
+      case "clients":
+        return "Gestión de Clientes"
+      case "hours":
+        return "Control de Horas"
+      case "reports":
+        return "Reportes y Análisis"
+      case "settings":
+        return "Configuración del Sistema"
+      default:
+        return "Dashboard"
+    }
+  }
 
-        <Tabs defaultValue="quotes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="quotes" className="flex items-center gap-2">
-              <AlertCircleIcon className="h-4 w-4" />
-              Cotizaciones ({hourQuotes.length})
-            </TabsTrigger>
-            <TabsTrigger value="budgets" className="flex items-center gap-2">
-              <FileTextIcon className="h-4 w-4" />
-              Presupuestos ({budgets.length})
-            </TabsTrigger>
-            <TabsTrigger value="clients" className="flex items-center gap-2">
-              <UserIcon className="h-4 w-4" />
-              Clientes ({clients.length})
-            </TabsTrigger>
-            <TabsTrigger value="hours" className="flex items-center gap-2">
-              <ClockIcon className="h-4 w-4" />
-              Control de Horas ({hourEntries.length})
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2">
-              <TrendingUpIcon className="h-4 w-4" />
-              Reportes
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <SettingsIcon className="h-4 w-4" />
-              Configuración
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Tab de Cotizaciones de Horas */}
-          <TabsContent value="quotes">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>Cotizaciones de Horas</CardTitle>
-                  <CardDescription>Solicitudes de horas de los clientes pendientes de aprobación</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {hourQuotes.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No hay cotizaciones de horas.</p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Proyecto</TableHead>
-                          <TableHead>Descripción</TableHead>
-                          <TableHead className="text-right">Horas</TableHead>
-                          <TableHead>Fecha</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {hourQuotes.map((quote) => (
-                          <TableRow key={quote.id}>
-                            <TableCell className="font-medium">{quote.client_name}</TableCell>
-                            <TableCell>{quote.project}</TableCell>
-                            <TableCell>{quote.description}</TableCell>
-                            <TableCell className="text-right">
-                              <span className={quote.requested_hours < 0 ? "text-red-600 font-semibold" : ""}>
-                                {quote.requested_hours > 0 ? "+" : ""}
-                                {quote.requested_hours}h
-                              </span>
-                            </TableCell>
-                            <TableCell>{new Date(quote.request_date).toLocaleDateString("es-ES")}</TableCell>
-                            <TableCell>{getQuoteStatusBadge(quote.status)}</TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                {quote.status === "pending" && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => approveHourQuote(quote.id)}
-                                      title="Aprobar cotización"
-                                    >
-                                      <CheckIcon className="h-4 w-4 text-green-500" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => rejectHourQuote(quote.id)}
-                                      title="Rechazar cotización"
-                                    >
-                                      <XCircleIcon className="h-4 w-4 text-red-500" />
-                                    </Button>
-                                  </>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => deleteHourQuote(quote.id)}
-                                  title="Eliminar cotización"
-                                >
-                                  <TrashIcon className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Nueva Cotización</CardTitle>
-                  <CardDescription>Registra una solicitud de horas de un cliente</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="quoteClient">Cliente</Label>
-                    <select
-                      id="quoteClient"
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={newHourQuote.clientId}
-                      onChange={(e) => setNewHourQuote({ ...newHourQuote, clientId: e.target.value })}
-                    >
-                      <option value="">Seleccionar cliente</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="quoteProject">Proyecto</Label>
-                    <Input
-                      id="quoteProject"
-                      value={newHourQuote.project}
-                      onChange={(e) => setNewHourQuote({ ...newHourQuote, project: e.target.value })}
-                      placeholder="Nombre del proyecto"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="quoteHours">Horas Solicitadas</Label>
-                    <Input
-                      id="quoteHours"
-                      type="number"
-                      value={newHourQuote.requestedHours}
-                      onChange={(e) => setNewHourQuote({ ...newHourQuote, requestedHours: Number(e.target.value) })}
-                      placeholder="10 (usar - para restar horas)"
-                      step="0.5"
-                    />
-                    <p className="text-xs text-gray-500">
-                      Usa números positivos para agregar horas, negativos para restar horas del cliente
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="quoteDescription">Descripción</Label>
-                    <Textarea
-                      id="quoteDescription"
-                      value={newHourQuote.description}
-                      onChange={(e) => setNewHourQuote({ ...newHourQuote, description: e.target.value })}
-                      placeholder="Describe el trabajo solicitado..."
-                    />
-                  </div>
-                  <Button onClick={addHourQuote} className="w-full" disabled={clients.length === 0}>
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Crear Cotización
-                  </Button>
-                  {clients.length === 0 && (
-                    <p className="text-sm text-gray-500 text-center">
-                      Primero debes agregar clientes para crear cotizaciones
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Tab de Presupuestos */}
-          <TabsContent value="budgets">
-            <Card>
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "quotes":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>Lista de Presupuestos</CardTitle>
-                    <CardDescription>Gestiona todos tus presupuestos y su estado de pago</CardDescription>
-                  </div>
-                  <Link href="/budget-report">
-                    <Button>
-                      <PlusIcon className="h-4 w-4 mr-2" />
-                      Nuevo Presupuesto
-                    </Button>
-                  </Link>
-                </div>
+                <CardTitle>Cotizaciones de Horas</CardTitle>
+                <CardDescription>Solicitudes de horas de los clientes pendientes de aprobación</CardDescription>
               </CardHeader>
               <CardContent>
-                {budgets.length === 0 ? (
+                {hourQuotes.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">No hay presupuestos registrados.</p>
-                    <Link href="/budget-report">
-                      <Button className="mt-4">
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Crear tu primer presupuesto
-                      </Button>
-                    </Link>
+                    <p className="text-gray-500">No hay cotizaciones de horas.</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Número</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Proyecto</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Horas</TableHead>
                         <TableHead>Fecha</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {budgets.map((budget) => (
-                        <TableRow key={budget.id}>
-                          <TableCell className="font-medium">#{budget.number}</TableCell>
-                          <TableCell>{budget.client_name}</TableCell>
-                          <TableCell>{budget.project_name}</TableCell>
-                          <TableCell>{new Date(budget.date).toLocaleDateString("es-ES")}</TableCell>
-                          <TableCell className="text-right">${budget.total.toLocaleString()}</TableCell>
-                          <TableCell>{getStatusBadge(budget.status)}</TableCell>
+                      {hourQuotes.map((quote) => (
+                        <TableRow key={quote.id}>
+                          <TableCell className="font-medium">{quote.client_name}</TableCell>
+                          <TableCell>{quote.project}</TableCell>
+                          <TableCell>{quote.description}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={quote.requested_hours < 0 ? "text-red-600 font-semibold" : ""}>
+                              {quote.requested_hours > 0 ? "+" : ""}
+                              {quote.requested_hours}h
+                            </span>
+                          </TableCell>
+                          <TableCell>{new Date(quote.request_date).toLocaleDateString("es-ES")}</TableCell>
+                          <TableCell>{getQuoteStatusBadge(quote.status)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
+                              {quote.status === "pending" && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => approveHourQuote(quote.id)}
+                                    title="Aprobar cotización"
+                                  >
+                                    <CheckIcon className="h-4 w-4 text-green-500" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => rejectHourQuote(quote.id)}
+                                    title="Rechazar cotización"
+                                  >
+                                    <XCircleIcon className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => viewBudget(budget.id)}
-                                title="Ver presupuesto"
-                              >
-                                <EyeIcon className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => editBudget(budget.id)}
-                                title="Editar presupuesto"
-                              >
-                                <EditIcon className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => reprintBudget(budget.id)}
-                                title="Reimprimir presupuesto"
-                              >
-                                <PrinterIcon className="h-4 w-4 text-blue-500" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => toggleBudgetStatus(budget.id)}
-                                title={budget.status === "paid" ? "Marcar como pendiente" : "Marcar como pagado"}
-                              >
-                                {budget.status === "paid" ? (
-                                  <XCircleIcon className="h-4 w-4 text-red-500" />
-                                ) : (
-                                  <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteBudget(budget.id)}
-                                title="Eliminar presupuesto"
+                                onClick={() => deleteHourQuote(quote.id)}
+                                title="Eliminar cotización"
                               >
                                 <TrashIcon className="h-4 w-4 text-red-500" />
                               </Button>
@@ -1161,591 +949,752 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Tab de Clientes */}
-          <TabsContent value="clients">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>Lista de Clientes</CardTitle>
-                  <CardDescription>Gestiona tus clientes y sus horas asignadas</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {clients.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No hay clientes registrados.</p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead className="text-right">Horas Totales</TableHead>
-                          <TableHead className="text-right">Consumidas</TableHead>
-                          <TableHead className="text-right">Restantes</TableHead>
-                          <TableHead>Progreso</TableHead>
-                          <TableHead>Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {clients.map((client) => (
-                          <TableRow key={client.id}>
-                            <TableCell className="font-medium">{client.name}</TableCell>
-                            <TableCell>{client.email}</TableCell>
-                            <TableCell className="text-right">{client.total_hours}h</TableCell>
-                            <TableCell className="text-right">{client.consumed_hours}h</TableCell>
-                            <TableCell className="text-right">
-                              <span className={client.remaining_hours < 0 ? "text-red-600 font-semibold" : ""}>
-                                {client.remaining_hours}h
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full ${
-                                    client.consumed_hours > client.total_hours ? "bg-red-500" : "bg-blue-600"
-                                  }`}
-                                  style={{
-                                    width: `${Math.min((client.consumed_hours / client.total_hours) * 100, 100)}%`,
-                                  }}
-                                ></div>
-                                {client.consumed_hours > client.total_hours && (
-                                  <div className="text-xs text-red-600 mt-1 font-semibold">
-                                    SOBREGIRO: {client.consumed_hours - client.total_hours}h
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => generateClientReport(client.id)}
-                                  title="Generar reporte PDF"
-                                >
-                                  <PrinterIcon className="h-4 w-4 text-blue-500" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDeleteClient(client.id)}
-                                  title="Eliminar cliente"
-                                >
-                                  <TrashIcon className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Agregar Cliente</CardTitle>
-                  <CardDescription>Registra un nuevo cliente</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="clientName">Nombre del Cliente</Label>
-                    <Input
-                      id="clientName"
-                      value={newClient.name}
-                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                      placeholder="Ej: Empresa ABC S.A."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="clientEmail">Email</Label>
-                    <Input
-                      id="clientEmail"
-                      type="email"
-                      value={newClient.email}
-                      onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                      placeholder="contacto@empresa.com"
-                    />
-                  </div>
-                  <Button onClick={addClient} className="w-full">
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Agregar Cliente
-                  </Button>
-                  <p className="text-sm text-gray-500 text-center">
-                    Las horas se asignarán automáticamente desde las cotizaciones aprobadas
+            <Card>
+              <CardHeader>
+                <CardTitle>Nueva Cotización</CardTitle>
+                <CardDescription>Registra una solicitud de horas de un cliente</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quoteClient">Cliente</Label>
+                  <select
+                    id="quoteClient"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={newHourQuote.clientId}
+                    onChange={(e) => setNewHourQuote({ ...newHourQuote, clientId: e.target.value })}
+                  >
+                    <option value="">Seleccionar cliente</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quoteProject">Proyecto</Label>
+                  <Input
+                    id="quoteProject"
+                    value={newHourQuote.project}
+                    onChange={(e) => setNewHourQuote({ ...newHourQuote, project: e.target.value })}
+                    placeholder="Nombre del proyecto"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quoteHours">Horas Solicitadas</Label>
+                  <Input
+                    id="quoteHours"
+                    type="number"
+                    value={newHourQuote.requestedHours}
+                    onChange={(e) => setNewHourQuote({ ...newHourQuote, requestedHours: Number(e.target.value) })}
+                    placeholder="10 (usar - para restar horas)"
+                    step="0.5"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Usa números positivos para agregar horas, negativos para restar horas del cliente
                   </p>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quoteDescription">Descripción</Label>
+                  <Textarea
+                    id="quoteDescription"
+                    value={newHourQuote.description}
+                    onChange={(e) => setNewHourQuote({ ...newHourQuote, description: e.target.value })}
+                    placeholder="Describe el trabajo solicitado..."
+                  />
+                </div>
+                <Button onClick={addHourQuote} className="w-full" disabled={clients.length === 0}>
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Crear Cotización
+                </Button>
+                {clients.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center">
+                    Primero debes agregar clientes para crear cotizaciones
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
 
-          {/* Tab de Control de Horas */}
-          <TabsContent value="hours">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle>Registro de Horas</CardTitle>
-                  <CardDescription>Historial de horas trabajadas por cliente</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {hourEntries.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No hay registros de horas.</p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Fecha</TableHead>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Proyecto</TableHead>
-                          <TableHead>Descripción</TableHead>
-                          <TableHead className="text-right">Horas</TableHead>
-                          <TableHead>Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {hourEntries.map((entry) => (
-                          <TableRow key={entry.id}>
-                            <TableCell>{new Date(entry.date).toLocaleDateString("es-ES")}</TableCell>
-                            <TableCell>{entry.client_name}</TableCell>
-                            <TableCell>{entry.project}</TableCell>
-                            <TableCell>{entry.description}</TableCell>
-                            <TableCell className="text-right">{entry.hours}h</TableCell>
-                            <TableCell>
+      case "budgets":
+        return (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Lista de Presupuestos</CardTitle>
+                  <CardDescription>Gestiona todos tus presupuestos y su estado de pago</CardDescription>
+                </div>
+                <Link href="/budget-report">
+                  <Button>
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Nuevo Presupuesto
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {budgets.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No hay presupuestos registrados.</p>
+                  <Link href="/budget-report">
+                    <Button className="mt-4">
+                      <PlusIcon className="h-4 w-4 mr-2" />
+                      Crear tu primer presupuesto
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Número</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Proyecto</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {budgets.map((budget) => (
+                      <TableRow key={budget.id}>
+                        <TableCell className="font-medium">#{budget.number}</TableCell>
+                        <TableCell>{budget.client_name}</TableCell>
+                        <TableCell>{budget.project_name}</TableCell>
+                        <TableCell>{new Date(budget.date).toLocaleDateString("es-ES")}</TableCell>
+                        <TableCell className="text-right">${budget.total.toLocaleString()}</TableCell>
+                        <TableCell>{getStatusBadge(budget.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => viewBudget(budget.id)}
+                              title="Ver presupuesto"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => editBudget(budget.id)}
+                              title="Editar presupuesto"
+                            >
+                              <EditIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => reprintBudget(budget.id)}
+                              title="Reimprimir presupuesto"
+                            >
+                              <PrinterIcon className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleBudgetStatus(budget.id)}
+                              title={budget.status === "paid" ? "Marcar como pendiente" : "Marcar como pagado"}
+                            >
+                              {budget.status === "paid" ? (
+                                <XCircleIcon className="h-4 w-4 text-red-500" />
+                              ) : (
+                                <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteBudget(budget.id)}
+                              title="Eliminar presupuesto"
+                            >
+                              <TrashIcon className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )
+
+      case "clients":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Lista de Clientes</CardTitle>
+                <CardDescription>Gestiona tus clientes y sus horas asignadas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clients.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No hay clientes registrados.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead className="text-right">Horas Totales</TableHead>
+                        <TableHead className="text-right">Consumidas</TableHead>
+                        <TableHead className="text-right">Restantes</TableHead>
+                        <TableHead>Progreso</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {clients.map((client) => (
+                        <TableRow key={client.id}>
+                          <TableCell className="font-medium">{client.name}</TableCell>
+                          <TableCell>{client.email}</TableCell>
+                          <TableCell className="text-right">{client.total_hours}h</TableCell>
+                          <TableCell className="text-right">{client.consumed_hours}h</TableCell>
+                          <TableCell className="text-right">
+                            <span className={client.remaining_hours < 0 ? "text-red-600 font-semibold" : ""}>
+                              {client.remaining_hours}h
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  client.consumed_hours > client.total_hours ? "bg-red-500" : "bg-blue-600"
+                                }`}
+                                style={{
+                                  width: `${Math.min((client.consumed_hours / client.total_hours) * 100, 100)}%`,
+                                }}
+                              ></div>
+                              {client.consumed_hours > client.total_hours && (
+                                <div className="text-xs text-red-600 mt-1 font-semibold">
+                                  SOBREGIRO: {client.consumed_hours - client.total_hours}h
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => handleDeleteHourEntry(entry.id)}
-                                title="Eliminar registro"
+                                onClick={() => generateClientReport(client.id)}
+                                title="Generar reporte PDF"
+                              >
+                                <PrinterIcon className="h-4 w-4 text-blue-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClient(client.id)}
+                                title="Eliminar cliente"
                               >
                                 <TrashIcon className="h-4 w-4 text-red-500" />
                               </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Registrar Horas</CardTitle>
-                  <CardDescription>Añade tiempo trabajado para un cliente</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="selectClient">Cliente</Label>
-                    <select
-                      id="selectClient"
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      value={newHourEntry.clientId}
-                      onChange={(e) => setNewHourEntry({ ...newHourEntry, clientId: e.target.value })}
-                    >
-                      <option value="">Seleccionar cliente</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name} (
-                          {client.remaining_hours < 0
-                            ? `${client.remaining_hours}h SOBREGIRO`
-                            : `${client.remaining_hours}h restantes`}
-                          )
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="projectName">Proyecto</Label>
-                    <Input
-                      id="projectName"
-                      value={newHourEntry.project}
-                      onChange={(e) => setNewHourEntry({ ...newHourEntry, project: e.target.value })}
-                      placeholder="Nombre del proyecto"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="hoursWorked">Horas Trabajadas</Label>
-                    <Input
-                      id="hoursWorked"
-                      type="number"
-                      value={newHourEntry.hours}
-                      onChange={(e) => setNewHourEntry({ ...newHourEntry, hours: Number(e.target.value) })}
-                      placeholder="8"
-                      min="0.5"
-                      step="0.5"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="workDescription">Descripción del Trabajo</Label>
-                    <Textarea
-                      id="workDescription"
-                      value={newHourEntry.description}
-                      onChange={(e) => setNewHourEntry({ ...newHourEntry, description: e.target.value })}
-                      placeholder="Describe el trabajo realizado..."
-                    />
-                  </div>
-                  <Button onClick={addHourEntry} className="w-full" disabled={clients.length === 0}>
-                    <ClockIcon className="h-4 w-4 mr-2" />
-                    Registrar Horas
-                  </Button>
-                  {clients.length === 0 && (
-                    <p className="text-sm text-gray-500 text-center">
-                      Primero debes agregar clientes para registrar horas
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Tab de Reportes */}
-          <TabsContent value="reports">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {clients.length === 0 ? (
-                <div className="col-span-full text-center py-8">
-                  <p className="text-gray-500">No hay clientes para mostrar reportes.</p>
-                </div>
-              ) : (
-                clients.map((client) => {
-                  const clientHours = getHoursForClient(client.id)
-
-                  return (
-                    <Card key={client.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{client.name}</CardTitle>
-                        <CardDescription>Reporte de horas consumidas</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div className="flex justify-between">
-                            <span>Horas Asignadas:</span>
-                            <span className="font-semibold">{client.total_hours}h</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Horas Consumidas:</span>
-                            <span className="font-semibold text-blue-600">{client.consumed_hours}h</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Horas Restantes:</span>
-                            <span className="font-semibold text-green-600">{client.remaining_hours}h</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full"
-                              style={{ width: `${(client.consumed_hours / client.total_hours) * 100}%` }}
-                            ></div>
-                          </div>
-                          <div className="text-center text-sm text-gray-600">
-                            {Math.round((client.consumed_hours / client.total_hours) * 100)}% completado
-                          </div>
-
-                          <Button
-                            onClick={() => generateClientReport(client.id)}
-                            className="w-full mt-4"
-                            variant="outline"
-                          >
-                            <PrinterIcon className="h-4 w-4 mr-2" />
-                            Generar Reporte PDF
-                          </Button>
-
-                          {clientHours.length > 0 && (
-                            <div className="mt-4">
-                              <h4 className="font-semibold text-sm mb-2">Últimas actividades:</h4>
-                              <div className="space-y-1">
-                                {clientHours.slice(-3).map((entry) => (
-                                  <div key={entry.id} className="text-xs text-gray-600">
-                                    <div className="flex justify-between">
-                                      <span>{new Date(entry.date).toLocaleDateString("es-ES")}</span>
-                                      <span>{entry.hours}h</span>
-                                    </div>
-                                    <div className="truncate">{entry.description}</div>
-                                  </div>
-                                ))}
-                              </div>
                             </div>
-                          )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Agregar Cliente</CardTitle>
+                <CardDescription>Registra un nuevo cliente</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clientName">Nombre del Cliente</Label>
+                  <Input
+                    id="clientName"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                    placeholder="Ej: Empresa ABC S.A."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clientEmail">Email</Label>
+                  <Input
+                    id="clientEmail"
+                    type="email"
+                    value={newClient.email}
+                    onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                    placeholder="contacto@empresa.com"
+                  />
+                </div>
+                <Button onClick={addClient} className="w-full">
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Agregar Cliente
+                </Button>
+                <p className="text-sm text-gray-500 text-center">
+                  Las horas se asignarán automáticamente desde las cotizaciones aprobadas
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )
+
+      case "hours":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Registro de Horas</CardTitle>
+                <CardDescription>Historial de horas trabajadas por cliente</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {hourEntries.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No hay registros de horas.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Proyecto</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Horas</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {hourEntries.map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell>{new Date(entry.date).toLocaleDateString("es-ES")}</TableCell>
+                          <TableCell>{entry.client_name}</TableCell>
+                          <TableCell>{entry.project}</TableCell>
+                          <TableCell>{entry.description}</TableCell>
+                          <TableCell className="text-right">{entry.hours}h</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteHourEntry(entry.id)}
+                              title="Eliminar registro"
+                            >
+                              <TrashIcon className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Registrar Horas</CardTitle>
+                <CardDescription>Añade tiempo trabajado para un cliente</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="selectClient">Cliente</Label>
+                  <select
+                    id="selectClient"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={newHourEntry.clientId}
+                    onChange={(e) => setNewHourEntry({ ...newHourEntry, clientId: e.target.value })}
+                  >
+                    <option value="">Seleccionar cliente</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name} (
+                        {client.remaining_hours < 0
+                          ? `${client.remaining_hours}h SOBREGIRO`
+                          : `${client.remaining_hours}h restantes`}
+                        )
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="projectName">Proyecto</Label>
+                  <Input
+                    id="projectName"
+                    value={newHourEntry.project}
+                    onChange={(e) => setNewHourEntry({ ...newHourEntry, project: e.target.value })}
+                    placeholder="Nombre del proyecto"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hoursWorked">Horas Trabajadas</Label>
+                  <Input
+                    id="hoursWorked"
+                    type="number"
+                    value={newHourEntry.hours}
+                    onChange={(e) => setNewHourEntry({ ...newHourEntry, hours: Number(e.target.value) })}
+                    placeholder="8"
+                    min="0.5"
+                    step="0.5"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="workDescription">Descripción del Trabajo</Label>
+                  <Textarea
+                    id="workDescription"
+                    value={newHourEntry.description}
+                    onChange={(e) => setNewHourEntry({ ...newHourEntry, description: e.target.value })}
+                    placeholder="Describe el trabajo realizado..."
+                  />
+                </div>
+                <Button onClick={addHourEntry} className="w-full" disabled={clients.length === 0}>
+                  <ClockIcon className="h-4 w-4 mr-2" />
+                  Registrar Horas
+                </Button>
+                {clients.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center">
+                    Primero debes agregar clientes para registrar horas
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+
+      case "reports":
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {clients.length === 0 ? (
+              <div className="col-span-full text-center py-8">
+                <p className="text-gray-500">No hay clientes para mostrar reportes.</p>
+              </div>
+            ) : (
+              clients.map((client) => {
+                const clientHours = getHoursForClient(client.id)
+
+                return (
+                  <Card key={client.id}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">{client.name}</CardTitle>
+                      <CardDescription>Reporte de horas consumidas</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex justify-between">
+                          <span>Horas Asignadas:</span>
+                          <span className="font-semibold">{client.total_hours}h</span>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })
-              )}
-            </div>
-          </TabsContent>
+                        <div className="flex justify-between">
+                          <span>Horas Consumidas:</span>
+                          <span className="font-semibold text-blue-600">{client.consumed_hours}h</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Horas Restantes:</span>
+                          <span className="font-semibold text-green-600">{client.remaining_hours}h</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full"
+                            style={{ width: `${(client.consumed_hours / client.total_hours) * 100}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-center text-sm text-gray-600">
+                          {Math.round((client.consumed_hours / client.total_hours) * 100)}% completado
+                        </div>
 
-          {/* Tab de Configuración */}
-          <TabsContent value="settings">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cambiar Contraseña</CardTitle>
-                  <CardDescription>Actualiza tu contraseña de acceso al sistema</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handlePasswordChange} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">Nueva Contraseña</Label>
-                      <Input
-                        id="newPassword"
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Mínimo 6 caracteres"
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repite la nueva contraseña"
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={configLoading}>
-                      {configLoading ? "Actualizando..." : "Cambiar Contraseña"}
-                    </Button>
-                  </form>
+                        <Button
+                          onClick={() => generateClientReport(client.id)}
+                          className="w-full mt-4"
+                          variant="outline"
+                        >
+                          <PrinterIcon className="h-4 w-4 mr-2" />
+                          Generar Reporte PDF
+                        </Button>
 
-                  {configMessage && (
-                    <div
-                      className={`mt-4 p-3 rounded-md text-sm ${
-                        configMessage.includes("exitosamente")
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {configMessage}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        {clientHours.length > 0 && (
+                          <div className="mt-4">
+                            <h4 className="font-semibold text-sm mb-2">Últimas actividades:</h4>
+                            <div className="space-y-1">
+                              {clientHours.slice(-3).map((entry) => (
+                                <div key={entry.id} className="text-xs text-gray-600">
+                                  <div className="flex justify-between">
+                                    <span>{new Date(entry.date).toLocaleDateString("es-ES")}</span>
+                                    <span>{entry.hours}h</span>
+                                  </div>
+                                  <div className="truncate">{entry.description}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
+          </div>
+        )
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Información de la Cuenta</CardTitle>
-                  <CardDescription>Detalles de tu cuenta actual</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+      case "settings":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cambiar Contraseña</CardTitle>
+                <CardDescription>Actualiza tu contraseña de acceso al sistema</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePasswordChange} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Email/Usuario</Label>
-                    <div className="p-2 bg-gray-50 rounded-md text-sm">
-                      {user?.email === "admin@apexconsulting.com" ? "admin" : user?.email}
-                    </div>
+                    <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                      minLength={6}
+                    />
                   </div>
-
                   <div className="space-y-2">
-                    <Label>Fecha de Registro</Label>
-                    <div className="p-2 bg-gray-50 rounded-md text-sm">
-                      {user?.created_at ? new Date(user.created_at).toLocaleDateString("es-ES") : "No disponible"}
-                    </div>
+                    <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repite la nueva contraseña"
+                      required
+                      minLength={6}
+                    />
                   </div>
+                  <Button type="submit" className="w-full" disabled={configLoading}>
+                    {configLoading ? "Actualizando..." : "Cambiar Contraseña"}
+                  </Button>
+                </form>
 
-                  <div className="space-y-2">
-                    <Label>Último Acceso</Label>
-                    <div className="p-2 bg-gray-50 rounded-md text-sm">
-                      {user?.last_sign_in_at
-                        ? new Date(user.last_sign_in_at).toLocaleDateString("es-ES")
-                        : "No disponible"}
-                    </div>
+                {configMessage && (
+                  <div
+                    className={`mt-4 p-3 rounded-md text-sm ${
+                      configMessage.includes("exitosamente") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {configMessage}
                   </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  <div className="pt-4 border-t">
-                    <Button
-                      onClick={handleSignOut}
-                      variant="outline"
-                      className="w-full text-red-600 hover:text-red-700 bg-transparent"
-                    >
-                      <LogOutIcon className="h-4 w-4 mr-2" />
-                      Cerrar Sesión
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Modal de Visualización/Edición de Presupuesto */}
-        {isViewingBudget && selectedBudget && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">
-                    {isEditingBudget ? "Editar" : "Ver"} Presupuesto #{selectedBudget.number}
-                  </h2>
-                  <div className="flex gap-2">
-                    <Button onClick={() => reprintBudget(selectedBudget.id)} variant="outline">
-                      <PrinterIcon className="h-4 w-4 mr-2" />
-                      Reimprimir
-                    </Button>
-                    {!isEditingBudget && (
-                      <Button onClick={() => setIsEditingBudget(true)} variant="outline">
-                        <EditIcon className="h-4 w-4 mr-2" />
-                        Editar
-                      </Button>
-                    )}
-                    {isEditingBudget && (
-                      <Button onClick={saveBudgetChanges} className="bg-green-600 hover:bg-green-700">
-                        <CheckIcon className="h-4 w-4 mr-2" />
-                        Guardar
-                      </Button>
-                    )}
-                    <Button onClick={closeBudgetModal} variant="outline">
-                      <XCircleIcon className="h-4 w-4 mr-2" />
-                      Cerrar
-                    </Button>
+            <Card>
+              <CardHeader>
+                <CardTitle>Información de la Cuenta</CardTitle>
+                <CardDescription>Detalles de tu cuenta actual</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Email/Usuario</Label>
+                  <div className="p-2 bg-gray-50 rounded-md text-sm">
+                    {user?.email === "admin@apexconsulting.com" ? "admin" : user?.email}
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  {/* Información del Cliente y Proyecto */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="modalClientName">Cliente</Label>
-                      {isEditingBudget ? (
-                        <Input
-                          id="modalClientName"
-                          value={selectedBudget.client_name}
-                          onChange={(e) => setSelectedBudget({ ...selectedBudget, client_name: e.target.value })}
-                        />
-                      ) : (
-                        <p className="p-2 bg-gray-50 rounded">{selectedBudget.client_name}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="modalProjectName">Proyecto</Label>
-                      {isEditingBudget ? (
-                        <Input
-                          id="modalProjectName"
-                          value={selectedBudget.project_name}
-                          onChange={(e) => setSelectedBudget({ ...selectedBudget, project_name: e.target.value })}
-                        />
-                      ) : (
-                        <p className="p-2 bg-gray-50 rounded">{selectedBudget.project_name}</p>
-                      )}
-                    </div>
+                <div className="space-y-2">
+                  <Label>Fecha de Registro</Label>
+                  <div className="p-2 bg-gray-50 rounded-md text-sm">
+                    {user?.created_at ? new Date(user.created_at).toLocaleDateString("es-ES") : "No disponible"}
                   </div>
+                </div>
 
+                <div className="space-y-2">
+                  <Label>Último Acceso</Label>
+                  <div className="p-2 bg-gray-50 rounded-md text-sm">
+                    {user?.last_sign_in_at
+                      ? new Date(user.last_sign_in_at).toLocaleDateString("es-ES")
+                      : "No disponible"}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+
+      default:
+        return <div>Selecciona una opción del menú</div>
+    }
+  }
+
+  return (
+    <SidebarProvider>
+      <AppSidebar
+        budgetsCount={budgets.length}
+        clientsCount={clients.length}
+        quotesCount={hourQuotes.length}
+        hoursCount={hourEntries.length}
+      />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{getTabTitle(activeTab)}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="grid auto-rows-min gap-4">
+            <div className="aspect-video rounded-xl bg-muted/50 hidden" />
+          </div>
+          <div className="min-h-[100vh] flex-1 rounded-xl md:min-h-min">{renderTabContent()}</div>
+        </div>
+      </SidebarInset>
+
+      {/* Modal de Visualización/Edición de Presupuesto */}
+      {isViewingBudget && selectedBudget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">
+                  {isEditingBudget ? "Editar" : "Ver"} Presupuesto #{selectedBudget.number}
+                </h2>
+                <div className="flex gap-2">
+                  <Button onClick={() => reprintBudget(selectedBudget.id)} variant="outline">
+                    <PrinterIcon className="h-4 w-4 mr-2" />
+                    Reimprimir
+                  </Button>
+                  {!isEditingBudget && (
+                    <Button onClick={() => setIsEditingBudget(true)} variant="outline">
+                      <EditIcon className="h-4 w-4 mr-2" />
+                      Editar
+                    </Button>
+                  )}
+                  {isEditingBudget && (
+                    <Button onClick={saveBudgetChanges} className="bg-green-600 hover:bg-green-700">
+                      <CheckIcon className="h-4 w-4 mr-2" />
+                      Guardar
+                    </Button>
+                  )}
+                  <Button onClick={closeBudgetModal} variant="outline">
+                    <XCircleIcon className="h-4 w-4 mr-2" />
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Información del Cliente y Proyecto */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Fecha</Label>
-                    <p className="p-2 bg-gray-50 rounded">
-                      {new Date(selectedBudget.date).toLocaleDateString("es-ES")}
-                    </p>
+                    <Label htmlFor="modalClientName">Cliente</Label>
+                    {isEditingBudget ? (
+                      <Input
+                        id="modalClientName"
+                        value={selectedBudget.client_name}
+                        onChange={(e) => setSelectedBudget({ ...selectedBudget, client_name: e.target.value })}
+                      />
+                    ) : (
+                      <p className="p-2 bg-gray-50 rounded">{selectedBudget.client_name}</p>
+                    )}
                   </div>
-
                   <div>
-                    <Label>Estado</Label>
-                    <div className="p-2">{getStatusBadge(selectedBudget.status)}</div>
+                    <Label htmlFor="modalProjectName">Proyecto</Label>
+                    {isEditingBudget ? (
+                      <Input
+                        id="modalProjectName"
+                        value={selectedBudget.project_name}
+                        onChange={(e) => setSelectedBudget({ ...selectedBudget, project_name: e.target.value })}
+                      />
+                    ) : (
+                      <p className="p-2 bg-gray-50 rounded">{selectedBudget.project_name}</p>
+                    )}
                   </div>
+                </div>
 
-                  {/* Ítems del Presupuesto */}
-                  {selectedBudget.items && selectedBudget.items.length > 0 && (
-                    <div>
-                      <Label className="text-lg font-semibold">Ítems del Presupuesto</Label>
-                      <div className="mt-2">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Categoría</TableHead>
-                              <TableHead>Descripción</TableHead>
-                              <TableHead className="text-right">Cantidad</TableHead>
-                              <TableHead className="text-right">Precio Unit.</TableHead>
-                              <TableHead className="text-right">Total</TableHead>
-                              {isEditingBudget && <TableHead className="w-[50px]">Acciones</TableHead>}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {selectedBudget.items.map((item: any, index: number) => (
-                              <TableRow key={index}>
-                                <TableCell>
-                                  {isEditingBudget ? (
-                                    <Input
-                                      value={item.category || ""}
-                                      onChange={(e) => {
-                                        const updatedItems = [...selectedBudget.items]
-                                        updatedItems[index] = { ...updatedItems[index], category: e.target.value }
-                                        setSelectedBudget({ ...selectedBudget, items: updatedItems })
-                                      }}
-                                      placeholder="Categoría"
-                                    />
-                                  ) : (
-                                    item.category
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {isEditingBudget ? (
-                                    <Input
-                                      value={item.description}
-                                      onChange={(e) => {
-                                        const updatedItems = [...selectedBudget.items]
-                                        updatedItems[index] = { ...updatedItems[index], description: e.target.value }
-                                        setSelectedBudget({ ...selectedBudget, items: updatedItems })
-                                      }}
-                                      placeholder="Descripción"
-                                    />
-                                  ) : (
-                                    item.description
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {isEditingBudget ? (
-                                    <div className="flex gap-1">
-                                      <Input
-                                        type="number"
-                                        value={item.quantity}
-                                        onChange={(e) => {
-                                          const updatedItems = [...selectedBudget.items]
-                                          const newQuantity = Number(e.target.value) || 0
-                                          updatedItems[index] = { ...updatedItems[index], quantity: newQuantity }
+                <div>
+                  <Label>Fecha</Label>
+                  <p className="p-2 bg-gray-50 rounded">{new Date(selectedBudget.date).toLocaleDateString("es-ES")}</p>
+                </div>
 
-                                          // Recalcular total del presupuesto
-                                          const newTotal = updatedItems.reduce(
-                                            (sum, itm) => sum + itm.quantity * itm.rate,
-                                            0,
-                                          )
-                                          setSelectedBudget({ ...selectedBudget, items: updatedItems, total: newTotal })
-                                        }}
-                                        className="w-16"
-                                        min="0"
-                                        step="0.5"
-                                      />
-                                      <Input
-                                        value={item.unit || ""}
-                                        onChange={(e) => {
-                                          const updatedItems = [...selectedBudget.items]
-                                          updatedItems[index] = { ...updatedItems[index], unit: e.target.value }
-                                          setSelectedBudget({ ...selectedBudget, items: updatedItems })
-                                        }}
-                                        placeholder="unidad"
-                                        className="w-20"
-                                      />
-                                    </div>
-                                  ) : (
-                                    `${item.quantity} ${item.unit || ""}`
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {isEditingBudget ? (
+                <div>
+                  <Label>Estado</Label>
+                  <div className="p-2">{getStatusBadge(selectedBudget.status)}</div>
+                </div>
+
+                {/* Ítems del Presupuesto */}
+                {selectedBudget.items && selectedBudget.items.length > 0 && (
+                  <div>
+                    <Label className="text-lg font-semibold">Ítems del Presupuesto</Label>
+                    <div className="mt-2">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Categoría</TableHead>
+                            <TableHead>Descripción</TableHead>
+                            <TableHead className="text-right">Cantidad</TableHead>
+                            <TableHead className="text-right">Precio Unit.</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            {isEditingBudget && <TableHead className="w-[50px]">Acciones</TableHead>}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedBudget.items.map((item: any, index: number) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                {isEditingBudget ? (
+                                  <Input
+                                    value={item.category || ""}
+                                    onChange={(e) => {
+                                      const updatedItems = [...selectedBudget.items]
+                                      updatedItems[index] = { ...updatedItems[index], category: e.target.value }
+                                      setSelectedBudget({ ...selectedBudget, items: updatedItems })
+                                    }}
+                                    placeholder="Categoría"
+                                  />
+                                ) : (
+                                  item.category
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isEditingBudget ? (
+                                  <Input
+                                    value={item.description}
+                                    onChange={(e) => {
+                                      const updatedItems = [...selectedBudget.items]
+                                      updatedItems[index] = { ...updatedItems[index], description: e.target.value }
+                                      setSelectedBudget({ ...selectedBudget, items: updatedItems })
+                                    }}
+                                    placeholder="Descripción"
+                                  />
+                                ) : (
+                                  item.description
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {isEditingBudget ? (
+                                  <div className="flex gap-1">
                                     <Input
                                       type="number"
-                                      value={item.rate}
+                                      value={item.quantity}
                                       onChange={(e) => {
                                         const updatedItems = [...selectedBudget.items]
-                                        const newRate = Number(e.target.value) || 0
-                                        updatedItems[index] = { ...updatedItems[index], rate: newRate }
+                                        const newQuantity = Number(e.target.value) || 0
+                                        updatedItems[index] = { ...updatedItems[index], quantity: newQuantity }
 
                                         // Recalcular total del presupuesto
                                         const newTotal = updatedItems.reduce(
@@ -1754,127 +1703,162 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
                                         )
                                         setSelectedBudget({ ...selectedBudget, items: updatedItems, total: newTotal })
                                       }}
-                                      className="w-24"
+                                      className="w-16"
                                       min="0"
-                                      step="0.01"
+                                      step="0.5"
                                     />
-                                  ) : (
-                                    `$${item.rate?.toFixed(2)}`
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  ${((item.quantity || 0) * (item.rate || 0)).toFixed(2)}
-                                </TableCell>
-                                {isEditingBudget && (
-                                  <TableCell>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => {
-                                        const updatedItems = selectedBudget.items.filter((_, i) => i !== index)
-                                        const newTotal = updatedItems.reduce(
-                                          (sum, itm) => sum + itm.quantity * itm.rate,
-                                          0,
-                                        )
-                                        setSelectedBudget({ ...selectedBudget, items: updatedItems, total: newTotal })
+                                    <Input
+                                      value={item.unit || ""}
+                                      onChange={(e) => {
+                                        const updatedItems = [...selectedBudget.items]
+                                        updatedItems[index] = { ...updatedItems[index], unit: e.target.value }
+                                        setSelectedBudget({ ...selectedBudget, items: updatedItems })
                                       }}
-                                      title="Eliminar ítem"
-                                    >
-                                      <TrashIcon className="h-4 w-4 text-red-500" />
-                                    </Button>
-                                  </TableCell>
+                                      placeholder="unidad"
+                                      className="w-20"
+                                    />
+                                  </div>
+                                ) : (
+                                  `${item.quantity} ${item.unit || ""}`
                                 )}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {isEditingBudget ? (
+                                  <Input
+                                    type="number"
+                                    value={item.rate}
+                                    onChange={(e) => {
+                                      const updatedItems = [...selectedBudget.items]
+                                      const newRate = Number(e.target.value) || 0
+                                      updatedItems[index] = { ...updatedItems[index], rate: newRate }
 
-                        {/* Formulario para agregar nuevo ítem */}
-                        {isEditingBudget && (
-                          <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-                            <h4 className="font-semibold mb-3">Agregar Nuevo Ítem</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                              <Input
-                                placeholder="Categoría"
-                                value={newItemForEdit.category}
-                                onChange={(e) => setNewItemForEdit({ ...newItemForEdit, category: e.target.value })}
-                              />
-                              <Input
-                                placeholder="Descripción"
-                                value={newItemForEdit.description}
-                                onChange={(e) => setNewItemForEdit({ ...newItemForEdit, description: e.target.value })}
-                              />
-                              <Input
-                                type="number"
-                                placeholder="Cantidad"
-                                value={newItemForEdit.quantity}
-                                onChange={(e) =>
-                                  setNewItemForEdit({ ...newItemForEdit, quantity: Number(e.target.value) || 0 })
-                                }
-                                min="0"
-                                step="0.5"
-                              />
-                              <Input
-                                type="number"
-                                placeholder="Precio"
-                                value={newItemForEdit.rate}
-                                onChange={(e) =>
-                                  setNewItemForEdit({ ...newItemForEdit, rate: Number(e.target.value) || 0 })
-                                }
-                                min="0"
-                                step="0.01"
-                              />
-                              <Input
-                                placeholder="Unidad"
-                                value={newItemForEdit.unit}
-                                onChange={(e) => setNewItemForEdit({ ...newItemForEdit, unit: e.target.value })}
-                              />
-                            </div>
-                            <Button
-                              onClick={() => {
-                                if (
-                                  newItemForEdit.description &&
-                                  newItemForEdit.quantity > 0 &&
-                                  newItemForEdit.rate > 0
-                                ) {
-                                  const updatedItems = [
-                                    ...selectedBudget.items,
-                                    { ...newItemForEdit, id: crypto.randomUUID() },
-                                  ]
-                                  const newTotal = updatedItems.reduce((sum, itm) => sum + itm.quantity * itm.rate, 0)
-                                  setSelectedBudget({ ...selectedBudget, items: updatedItems, total: newTotal })
-                                  setNewItemForEdit({ category: "", description: "", quantity: 0, rate: 0, unit: "" })
-                                }
-                              }}
-                              className="mt-3"
-                              disabled={
-                                !newItemForEdit.description || newItemForEdit.quantity <= 0 || newItemForEdit.rate <= 0
+                                      // Recalcular total del presupuesto
+                                      const newTotal = updatedItems.reduce(
+                                        (sum, itm) => sum + itm.quantity * itm.rate,
+                                        0,
+                                      )
+                                      setSelectedBudget({ ...selectedBudget, items: updatedItems, total: newTotal })
+                                    }}
+                                    className="w-24"
+                                    min="0"
+                                    step="0.01"
+                                  />
+                                ) : (
+                                  `$${item.rate?.toFixed(2)}`
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                ${((item.quantity || 0) * (item.rate || 0)).toFixed(2)}
+                              </TableCell>
+                              {isEditingBudget && (
+                                <TableCell>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      const updatedItems = selectedBudget.items.filter((_, i) => i !== index)
+                                      const newTotal = updatedItems.reduce(
+                                        (sum, itm) => sum + itm.quantity * itm.rate,
+                                        0,
+                                      )
+                                      setSelectedBudget({ ...selectedBudget, items: updatedItems, total: newTotal })
+                                    }}
+                                    title="Eliminar ítem"
+                                  >
+                                    <TrashIcon className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+
+                      {/* Formulario para agregar nuevo ítem */}
+                      {isEditingBudget && (
+                        <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+                          <h4 className="font-semibold mb-3">Agregar Nuevo Ítem</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                            <Input
+                              placeholder="Categoría"
+                              value={newItemForEdit.category}
+                              onChange={(e) => setNewItemForEdit({ ...newItemForEdit, category: e.target.value })}
+                            />
+                            <Input
+                              placeholder="Descripción"
+                              value={newItemForEdit.description}
+                              onChange={(e) => setNewItemForEdit({ ...newItemForEdit, description: e.target.value })}
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Cantidad"
+                              value={newItemForEdit.quantity}
+                              onChange={(e) =>
+                                setNewItemForEdit({ ...newItemForEdit, quantity: Number(e.target.value) || 0 })
                               }
-                            >
-                              <PlusIcon className="h-4 w-4 mr-2" />
-                              Agregar Ítem
-                            </Button>
+                              min="0"
+                              step="0.5"
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Precio"
+                              value={newItemForEdit.rate}
+                              onChange={(e) =>
+                                setNewItemForEdit({ ...newItemForEdit, rate: Number(e.target.value) || 0 })
+                              }
+                              min="0"
+                              step="0.01"
+                            />
+                            <Input
+                              placeholder="Unidad"
+                              value={newItemForEdit.unit}
+                              onChange={(e) => setNewItemForEdit({ ...newItemForEdit, unit: e.target.value })}
+                            />
                           </div>
-                        )}
-                      </div>
+                          <Button
+                            onClick={() => {
+                              if (
+                                newItemForEdit.description &&
+                                newItemForEdit.quantity > 0 &&
+                                newItemForEdit.rate > 0
+                              ) {
+                                const updatedItems = [
+                                  ...selectedBudget.items,
+                                  { ...newItemForEdit, id: crypto.randomUUID() },
+                                ]
+                                const newTotal = updatedItems.reduce((sum, itm) => sum + itm.quantity * itm.rate, 0)
+                                setSelectedBudget({ ...selectedBudget, items: updatedItems, total: newTotal })
+                                setNewItemForEdit({ category: "", description: "", quantity: 0, rate: 0, unit: "" })
+                              }
+                            }}
+                            className="mt-3"
+                            disabled={
+                              !newItemForEdit.description || newItemForEdit.quantity <= 0 || newItemForEdit.rate <= 0
+                            }
+                          >
+                            <PlusIcon className="h-4 w-4 mr-2" />
+                            Agregar Ítem
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  <div className="border-t pt-4">
-                    <div className="flex justify-end">
-                      <div className="text-right">
-                        <p className="text-xl font-bold">
-                          Total: <span className="text-green-600">${selectedBudget.total.toLocaleString()}</span>
-                        </p>
-                      </div>
+                <div className="border-t pt-4">
+                  <div className="flex justify-end">
+                    <div className="text-right">
+                      <p className="text-xl font-bold">
+                        Total: <span className="text-green-600">${selectedBudget.total.toLocaleString()}</span>
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </SidebarProvider>
   )
 }
