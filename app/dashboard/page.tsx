@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -26,6 +28,7 @@ import {
   LogOutIcon,
   DatabaseIcon,
   AlertTriangleIcon,
+  SettingsIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
@@ -75,7 +78,14 @@ interface HourQuote {
 }
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth()
+  // Estados para configuración
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [configMessage, setConfigMessage] = useState("")
+  const [configLoading, setConfigLoading] = useState(false)
+
+  const { user, signOut, updatePassword } = useAuth()
   const {
     budgets,
     clients,
@@ -135,6 +145,37 @@ export default function Dashboard() {
     if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
       await signOut()
     }
+  }
+
+  // Agregar función para cambiar contraseña
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (newPassword !== confirmPassword) {
+      setConfigMessage("Las contraseñas no coinciden")
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setConfigMessage("La contraseña debe tener al menos 6 caracteres")
+      return
+    }
+
+    setConfigLoading(true)
+    setConfigMessage("")
+
+    const { error } = await updatePassword(newPassword)
+
+    if (error) {
+      setConfigMessage(error.message)
+    } else {
+      setConfigMessage("¡Contraseña actualizada exitosamente!")
+      setNewPassword("")
+      setConfirmPassword("")
+      setCurrentPassword("")
+    }
+
+    setConfigLoading(false)
   }
 
   if (loading) {
@@ -300,10 +341,10 @@ DECLARE
     last_number INTEGER;
 BEGIN
     SELECT COALESCE(MAX(CAST(number AS INTEGER)), 588) INTO last_number
-    FROM budgets 
-    WHERE user_id = user_uuid 
+    FROM budgets
+    WHERE user_id = user_uuid
     AND number ~ '^[0-9]+$';
-    
+
     RETURN last_number + 1;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
@@ -407,28 +448,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
       .company-info .description { font-size: 14px; color: #6b7280; margin: 0; }
       .date-info { text-align: right; font-size: 14px; color: #6b7280; }
       .date-info p { margin: 0 0 4px 0; }
-      
+
       .project-details { margin-bottom: 24px; }
       .project-details h3 { font-size: 18px; font-weight: 600; margin: 0 0 12px 0; }
       .project-details p { margin: 0 0 4px 0; font-size: 14px; color: #374151; }
       .project-details strong { font-weight: 600; }
-      
+
       .budget-breakdown { margin-bottom: 24px; }
       .budget-breakdown h3 { font-size: 18px; font-weight: 600; margin: 0 0 12px 0; }
-      
+
       table { width: 100%; border-collapse: collapse; }
       th { background-color: #f3f4f6; padding: 12px; text-align: left; font-weight: 600; font-size: 14px; border-bottom: 1px solid #e5e7eb; }
       th:nth-child(3), th:nth-child(4), th:nth-child(5) { text-align: right; }
       td { padding: 12px; font-size: 14px; border-bottom: 1px solid #e5e7eb; }
       td:nth-child(3), td:nth-child(4), td:nth-child(5) { text-align: right; }
       .no-items { text-align: center; color: #6b7280; padding: 32px; }
-      
+
       .total-section { display: flex; justify-content: flex-end; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
       .total-amount { font-size: 20px; font-weight: bold; color: #374151; }
       .total-value { color: #059669; }
-      
+
       .print-instructions { text-align: center; font-size: 14px; color: #6b7280; margin-top: 32px; }
-      
+
       @media print {
         body { margin: 0; padding: 16px; }
         .no-print { display: none !important; }
@@ -840,7 +881,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
         </div>
 
         <Tabs defaultValue="quotes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="quotes" className="flex items-center gap-2">
               <AlertCircleIcon className="h-4 w-4" />
               Cotizaciones ({hourQuotes.length})
@@ -860,6 +901,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
             <TabsTrigger value="reports" className="flex items-center gap-2">
               <TrendingUpIcon className="h-4 w-4" />
               Reportes
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <SettingsIcon className="h-4 w-4" />
+              Configuración
             </TabsTrigger>
           </TabsList>
 
@@ -1431,6 +1476,103 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
                   )
                 })
               )}
+            </div>
+          </TabsContent>
+
+          {/* Tab de Configuración */}
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cambiar Contraseña</CardTitle>
+                  <CardDescription>Actualiza tu contraseña de acceso al sistema</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Repite la nueva contraseña"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={configLoading}>
+                      {configLoading ? "Actualizando..." : "Cambiar Contraseña"}
+                    </Button>
+                  </form>
+
+                  {configMessage && (
+                    <div
+                      className={`mt-4 p-3 rounded-md text-sm ${
+                        configMessage.includes("exitosamente")
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {configMessage}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Información de la Cuenta</CardTitle>
+                  <CardDescription>Detalles de tu cuenta actual</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Email/Usuario</Label>
+                    <div className="p-2 bg-gray-50 rounded-md text-sm">
+                      {user?.email === "admin@apexconsulting.com" ? "admin" : user?.email}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Fecha de Registro</Label>
+                    <div className="p-2 bg-gray-50 rounded-md text-sm">
+                      {user?.created_at ? new Date(user.created_at).toLocaleDateString("es-ES") : "No disponible"}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Último Acceso</Label>
+                    <div className="p-2 bg-gray-50 rounded-md text-sm">
+                      {user?.last_sign_in_at
+                        ? new Date(user.last_sign_in_at).toLocaleDateString("es-ES")
+                        : "No disponible"}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <Button
+                      onClick={handleSignOut}
+                      variant="outline"
+                      className="w-full text-red-600 hover:text-red-700 bg-transparent"
+                    >
+                      <LogOutIcon className="h-4 w-4 mr-2" />
+                      Cerrar Sesión
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
