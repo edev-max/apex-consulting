@@ -101,9 +101,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      setLoading(true)
       await supabase.auth.signOut()
+      // Limpiar estados locales
+      setUser(null)
+      setSession(null)
+      setError(null)
     } catch (err) {
       console.error("Error signing out:", err)
+      setError("Error al cerrar sesión")
+    } finally {
+      setLoading(false)
     }
   }
 

@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth"
 
 export default function Auth() {
   const { signIn, error: authError } = useAuth()
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState("admin") // Valor por defecto
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
@@ -82,6 +82,7 @@ export default function Auth() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin"
                 required
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
@@ -93,6 +94,7 @@ export default function Auth() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Tu contraseña"
                 required
+                autoComplete="current-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
@@ -109,6 +111,18 @@ export default function Auth() {
               {message}
             </div>
           )}
+
+          <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-800 text-sm">
+              <strong>💡 Credenciales por defecto:</strong>
+            </p>
+            <p className="text-blue-700 text-sm mt-1">
+              Usuario: <code className="bg-blue-100 px-1 rounded">admin</code>
+            </p>
+            <p className="text-blue-600 text-xs mt-2">
+              Si es tu primera vez, usa "admin" como usuario y configura tu contraseña en Supabase.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
