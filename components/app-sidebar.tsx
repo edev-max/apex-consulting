@@ -1,8 +1,6 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -35,12 +33,22 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   clientsCount: number
   quotesCount: number
   hoursCount: number
+  activeTab: string
+  onTabChange: (tab: string) => void
 }
 
-export function AppSidebar({ budgetsCount, clientsCount, quotesCount, hoursCount, ...props }: AppSidebarProps) {
+export function AppSidebar({
+  budgetsCount,
+  clientsCount,
+  quotesCount,
+  hoursCount,
+  activeTab,
+  onTabChange,
+  ...props
+}: AppSidebarProps) {
   const { user, signOut } = useAuth()
   const pathname = usePathname()
-  const [activeTab, setActiveTab] = useState("quotes")
+  // const [activeTab, setActiveTab] = useState("quotes") // Removed useState
 
   const handleSignOut = async () => {
     if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
@@ -49,6 +57,13 @@ export function AppSidebar({ budgetsCount, clientsCount, quotesCount, hoursCount
   }
 
   const menuItems = [
+    {
+      id: "dashboard",
+      title: "Dashboard",
+      icon: TrendingUpIcon,
+      count: 0,
+      description: "Resumen general",
+    },
     {
       id: "quotes",
       title: "Cotizaciones",
@@ -116,7 +131,7 @@ export function AppSidebar({ budgetsCount, clientsCount, quotesCount, hoursCount
                   <SidebarMenuButton
                     asChild
                     isActive={activeTab === item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => onTabChange(item.id)}
                     className="w-full justify-start"
                   >
                     <button className="flex items-center gap-3 w-full">

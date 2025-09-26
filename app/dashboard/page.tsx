@@ -36,6 +36,7 @@ import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 import { useSupabaseData } from "@/hooks/useSupabaseData"
 import { AppSidebar } from "@/components/app-sidebar"
+import { DashboardCards } from "@/components/dashboard-cards"
 
 interface Budget {
   id: string
@@ -86,7 +87,7 @@ export default function Dashboard() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [configMessage, setConfigMessage] = useState("")
   const [configLoading, setConfigLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState("quotes")
+  const [activeTab, setActiveTab] = useState("dashboard")
 
   const { user, updatePassword } = useAuth()
   const {
@@ -851,6 +852,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
 
   const getTabTitle = (tab: string) => {
     switch (tab) {
+      case "dashboard":
+        return "Dashboard General"
       case "quotes":
         return "Cotizaciones de Horas"
       case "budgets":
@@ -870,6 +873,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case "dashboard":
+        return <DashboardCards budgets={budgets} clients={clients} hourEntries={hourEntries} hourQuotes={hourQuotes} />
+
       case "quotes":
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1537,6 +1543,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
         clientsCount={clients.length}
         quotesCount={hourQuotes.length}
         hoursCount={hourEntries.length}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
