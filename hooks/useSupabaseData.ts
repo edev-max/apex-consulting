@@ -542,15 +542,44 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
-      const { data, error } = await supabase
+      // First, try to get existing settings
+      const { data: existingSettings } = await supabase
         .from("company_settings")
-        .upsert({
-          user_id: user.id,
-          company_name: settings.company_name,
-          company_logo_url: settings.company_logo_url || null,
-        })
-        .select()
+        .select("*")
+        .eq("user_id", user.id)
         .single()
+
+      let data, error
+
+      if (existingSettings) {
+        // Update existing settings
+        const result = await supabase
+          .from("company_settings")
+          .update({
+            company_name: settings.company_name,
+            company_logo_url: settings.company_logo_url || existingSettings.company_logo_url,
+          })
+          .eq("user_id", user.id)
+          .select()
+          .single()
+
+        data = result.data
+        error = result.error
+      } else {
+        // Insert new settings
+        const result = await supabase
+          .from("company_settings")
+          .insert({
+            user_id: user.id,
+            company_name: settings.company_name,
+            company_logo_url: settings.company_logo_url || null,
+          })
+          .select()
+          .single()
+
+        data = result.data
+        error = result.error
+      }
 
       if (error) {
         console.error("Error saving company settings:", error)
@@ -587,15 +616,40 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .upsert({
-          user_id: user.id,
-          avatar_url: profile.avatar_url || null,
-          full_name: profile.full_name || null,
-        })
-        .select()
-        .single()
+      // First, try to get existing profile
+      const { data: existingProfile } = await supabase.from("user_profiles").select("*").eq("user_id", user.id).single()
+
+      let data, error
+
+      if (existingProfile) {
+        // Update existing profile
+        const result = await supabase
+          .from("user_profiles")
+          .update({
+            avatar_url: profile.avatar_url || existingProfile.avatar_url,
+            full_name: profile.full_name || existingProfile.full_name,
+          })
+          .eq("user_id", user.id)
+          .select()
+          .single()
+
+        data = result.data
+        error = result.error
+      } else {
+        // Insert new profile
+        const result = await supabase
+          .from("user_profiles")
+          .insert({
+            user_id: user.id,
+            avatar_url: profile.avatar_url || null,
+            full_name: profile.full_name || null,
+          })
+          .select()
+          .single()
+
+        data = result.data
+        error = result.error
+      }
 
       if (error) {
         console.error("Error saving user profile:", error)

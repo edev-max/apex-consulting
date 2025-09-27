@@ -25,8 +25,10 @@ import {
   SettingsIcon,
   LogOutIcon,
   PlusIcon,
+  Building2Icon,
 } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
+import { useSupabaseData } from "@/hooks/useSupabaseData"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   budgetsCount: number
@@ -47,8 +49,8 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const { user, signOut } = useAuth()
+  const { companySettings, userProfile } = useSupabaseData()
   const pathname = usePathname()
-  // const [activeTab, setActiveTab] = useState("quotes") // Removed useState
 
   const handleSignOut = async () => {
     if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
@@ -112,11 +114,31 @@ export function AppSidebar({
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-4 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="text-sm font-bold">AC</span>
-          </div>
+          {/* Logo de la empresa o iniciales como fallback */}
+          {companySettings?.company_logo_url ? (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden bg-primary/10">
+              <img
+                src={companySettings.company_logo_url || "/placeholder.svg"}
+                alt="Logo"
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  // Si la imagen falla al cargar, mostrar fallback
+                  const target = e.target as HTMLImageElement
+                  target.style.display = "none"
+                  target.nextElementSibling?.classList.remove("hidden")
+                }}
+              />
+              <div className="hidden flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Building2Icon className="h-4 w-4" />
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Building2Icon className="h-4 w-4" />
+            </div>
+          )}
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-semibold">APEX CONSULTING</span>
+            <span className="truncate font-semibold">{companySettings?.company_name || "APEX CONSULTING"}</span>
             <span className="truncate text-xs text-muted-foreground">Sistema de Gestión</span>
           </div>
         </div>
@@ -175,10 +197,35 @@ export function AppSidebar({
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="px-2 py-1">
-              <div className="text-xs text-muted-foreground">Usuario:</div>
-              <div className="text-sm font-medium">
-                {user?.email === "admin@apexconsulting.com" ? "admin" : user?.email}
+            <div className="px-2 py-1 flex items-center gap-2">
+              {/* Avatar del usuario */}
+              {userProfile?.avatar_url ? (
+                <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200">
+                  <img
+                    src={userProfile.avatar_url || "/placeholder.svg"}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Si la imagen falla al cargar, mostrar fallback
+                      const target = e.target as HTMLImageElement
+                      target.style.display = "none"
+                      target.nextElementSibling?.classList.remove("hidden")
+                    }}
+                  />
+                  <div className="hidden w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <span className="text-xs font-bold">{user?.email?.charAt(0).toUpperCase() || "U"}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                  <span className="text-xs font-bold">{user?.email?.charAt(0).toUpperCase() || "U"}</span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground">Usuario:</div>
+                <div className="text-sm font-medium truncate">
+                  {userProfile?.full_name || (user?.email === "admin@apexconsulting.com" ? "admin" : user?.email)}
+                </div>
               </div>
             </div>
           </SidebarMenuItem>

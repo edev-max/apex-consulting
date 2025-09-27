@@ -1,17 +1,5 @@
 "use client"
 
-import { BreadcrumbPage } from "@/components/ui/breadcrumb"
-
-import { BreadcrumbSeparator } from "@/components/ui/breadcrumb"
-
-import { BreadcrumbLink } from "@/components/ui/breadcrumb"
-
-import { BreadcrumbItem } from "@/components/ui/breadcrumb"
-
-import { BreadcrumbList } from "@/components/ui/breadcrumb"
-
-import { Breadcrumb } from "@/components/ui/breadcrumb"
-
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +11,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import {
   PlusIcon,
   EyeIcon,
@@ -38,6 +34,7 @@ import {
   UserIcon,
 } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
 import { useSupabaseData } from "@/hooks/useSupabaseData"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -47,7 +44,7 @@ interface Budget {
   id: string
   number: string
   client_name: string
-  project_name?: string
+  project_name: string
   project_description?: string
   total: number
   date: string
@@ -86,17 +83,9 @@ interface HourQuote {
   approved_date?: string
 }
 
-interface CompanySettings {
-  company_name: string
-  company_logo_url?: string
-}
-
-interface UserProfile {
-  avatar_url?: string
-  full_name?: string
-}
-
 export default function Dashboard() {
+  const router = useRouter()
+
   // Estados para configuración
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -189,6 +178,15 @@ export default function Dashboard() {
       setAvatarPreview(userProfile.avatar_url)
     }
   }, [userProfile])
+
+  // Función para manejar cambio de tab
+  const handleTabChange = (tab: string) => {
+    if (tab === "new-budget") {
+      router.push("/budget-report")
+    } else {
+      setActiveTab(tab)
+    }
+  }
 
   // Agregar función para cambiar contraseña
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -352,135 +350,10 @@ export default function Dashboard() {
                 <li>
                   Navega a <strong>SQL Editor</strong> en el menú lateral
                 </li>
-                <li>Ejecuta los siguientes scripts en orden:</li>
+                <li>
+                  Ejecuta el script SQL que está en el archivo <code>scripts/04-create-settings-tables.sql</code>
+                </li>
               </ol>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-gray-50 border rounded-lg p-4">
-                <h4 className="font-semibold text-gray-800 mb-2">1️⃣ Script: Crear Tablas</h4>
-                <div className="bg-gray-800 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto">
-                  <pre>{`-- Crear tabla de presupuestos
-CREATE TABLE IF NOT EXISTS budgets (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  number VARCHAR(50) NOT NULL,
-  client_name VARCHAR(255) NOT NULL,
-  project_name VARCHAR(255) NOT NULL,
-  project_description TEXT,
-  total DECIMAL(10,2) NOT NULL DEFAULT 0,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'overdue')),
-  items JSONB,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Crear tabla de clientes
-CREATE TABLE IF NOT EXISTS clients (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  total_hours INTEGER NOT NULL DEFAULT 0,
-  consumed_hours INTEGER NOT NULL DEFAULT 0,
-  remaining_hours INTEGER NOT NULL DEFAULT 0,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Crear tabla de registros de horas
-CREATE TABLE IF NOT EXISTS hour_entries (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  client_name VARCHAR(255) NOT NULL,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  hours DECIMAL(4,2) NOT NULL,
-  description TEXT NOT NULL,
-  project VARCHAR(255) NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Crear tabla de cotizaciones de horas
-CREATE TABLE IF NOT EXISTS hour_quotes (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  client_name VARCHAR(255) NOT NULL,
-  requested_hours INTEGER NOT NULL,
-  description TEXT NOT NULL,
-  project VARCHAR(255) NOT NULL,
-  request_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-  approved_date DATE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);`}</pre>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 border rounded-lg p-4">
-                <h4 className="font-semibold text-gray-800 mb-2">2️⃣ Script: Configurar Seguridad (RLS)</h4>
-                <div className="bg-gray-800 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto">
-                  <pre>{`-- Habilitar RLS en todas las tablas
-ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE hour_entries ENABLE ROW LEVEL SECURITY;
-ALTER TABLE hour_quotes ENABLE ROW LEVEL SECURITY;
-
--- Políticas para budgets
-CREATE POLICY "Users can manage own budgets" ON budgets
-  FOR ALL USING (auth.uid() = user_id);
-
--- Políticas para clients
-CREATE POLICY "Users can manage own clients" ON clients
-  FOR ALL USING (auth.uid() = user_id);
-
--- Políticas para hour_entries
-CREATE POLICY "Users can manage own hour entries" ON hour_entries
-  FOR ALL USING (auth.uid() = user_id);
-
--- Políticas para hour_quotes
-CREATE POLICY "Users can manage own hour quotes" ON hour_quotes
-  FOR ALL USING (auth.uid() = user_id);`}</pre>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 border rounded-lg p-4">
-                <h4 className="font-semibold text-gray-800 mb-2">3️⃣ Script: Funciones Auxiliares</h4>
-                <div className="bg-gray-800 text-green-400 p-3 rounded text-xs font-mono overflow-x-auto">
-                  <pre>{`-- Función para actualizar updated_at automáticamente
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Triggers para actualizar updated_at
-CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Función para obtener el siguiente número de presupuesto
-CREATE OR REPLACE FUNCTION get_next_budget_number(user_uuid UUID)
-RETURNS INTEGER AS $$
-DECLARE
-    last_number INTEGER;
-BEGIN
-    SELECT COALESCE(MAX(CAST(number AS INTEGER)), 588) INTO last_number
-    FROM budgets
-    WHERE user_id = user_uuid
-    AND number ~ '^[0-9]+$';
-
-    RETURN last_number + 1;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
-                </div>
-              </div>
             </div>
 
             <div className="mt-6 flex gap-3">
@@ -492,7 +365,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
 
             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-yellow-800 text-sm">
-                <strong>💡 Tip:</strong> Después de ejecutar los scripts, haz clic en "Verificar Base de Datos" para
+                <strong>💡 Tip:</strong> Después de ejecutar el script SQL, haz clic en "Verificar Base de Datos" para
                 comprobar que todo esté configurado correctamente.
               </p>
             </div>
@@ -569,12 +442,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
     <style>
       body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #333; background: white; }
       .container { max-width: 800px; margin: 0 auto; }
-      .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
-      .company-info { display: flex; align-items: center; gap: 16px; }
-      .company-logo { width: 60px; height: 60px; object-contain; }
-      .company-text h1 { color: #374151; font-size: 32px; font-weight: bold; margin: 0 0 8px 0; }
-      .company-text .subtitle { font-size: 24px; font-weight: 600; margin: 0 0 4px 0; }
-      .company-text .description { font-size: 14px; color: #6b7280; margin: 0; }
+      .header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+      .company-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+      .company-logo { width: 80px; height: 80px; object-fit: contain; }
+      .company-info h1 { color: #374151; font-size: 32px; font-weight: bold; margin: 0 0 8px 0; }
+      .company-info .subtitle { font-size: 24px; font-weight: 600; margin: 0 0 4px 0; }
+      .company-info .description { font-size: 14px; color: #6b7280; margin: 0; }
+      .header-details { display: flex; justify-content: space-between; align-items: flex-start; }
       .date-info { text-align: right; font-size: 14px; color: #6b7280; }
       .date-info p { margin: 0 0 4px 0; }
 
@@ -608,21 +482,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
   <body>
     <div class="container">
       <div class="header">
-        <div class="company-info">
+        <div class="company-header">
           ${
             companySettings?.company_logo_url
               ? `<img src="${companySettings.company_logo_url}" alt="Logo" class="company-logo" />`
               : ""
           }
-          <div class="company-text">
+          <div class="company-info">
             <h1>${companySettings?.company_name || "APEX CONSULTING"}</h1>
             <div class="subtitle">Presupuesto</div>
             <div class="description">Presupuesto detallado para el desarrollo de sistemas</div>
           </div>
         </div>
-        <div class="date-info">
-          <p>Fecha: ${new Date(budget.date).toLocaleDateString("es-ES")}</p>
-          <p>Presupuesto #: ${budget.number}</p>
+        <div class="header-details">
+          <div></div>
+          <div class="date-info">
+            <p>Fecha: ${new Date(budget.date).toLocaleDateString("es-ES")}</p>
+            <p>Presupuesto #: ${budget.number}</p>
+          </div>
         </div>
       </div>
 
@@ -847,9 +724,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
         <title>Reporte de Horas - ${client.name}</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #00838F; padding-bottom: 20px; }
-          .company-name { color: #00838F; font-size: 28px; font-weight: bold; margin-bottom: 10px; }
-          .report-title { font-size: 24px; margin-bottom: 5px; }
+          .header { margin-bottom: 30px; border-bottom: 2px solid #00838F; padding-bottom: 20px; }
+          .company-header { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+          .company-logo { width: 60px; height: 60px; object-fit: contain; }
+          .company-name { color: #00838F; font-size: 28px; font-weight: bold; margin: 0; }
+          .report-title { font-size: 24px; margin-bottom: 5px; text-align: center; }
           .client-info { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
           .summary { display: flex; justify-content: space-around; margin-bottom: 30px; }
           .summary-item { text-align: center; padding: 15px; background-color: #e3f2fd; border-radius: 8px; }
@@ -869,16 +748,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
       </head>
       <body>
         <div class="header">
-          <div style="display: flex; align-items: center; gap: 16px; justify-content: center;">
+          <div class="company-header">
             ${
               companySettings?.company_logo_url
-                ? `<img src="${companySettings.company_logo_url}" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;" />`
+                ? `<img src="${companySettings.company_logo_url}" alt="Logo" class="company-logo" />`
                 : ""
             }
             <div class="company-name">${companySettings?.company_name || "APEX CONSULTING"}</div>
           </div>
           <div class="report-title">Reporte de Horas de Desarrollo</div>
-          <div>Fecha: ${new Date().toLocaleDateString("es-ES")}</div>
+          <div style="text-align: center;">Fecha: ${new Date().toLocaleDateString("es-ES")}</div>
         </div>
 
         <div class="client-info">
@@ -980,7 +859,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
         }
 
         <div class="footer">
-          <p>Este reporte fue generado automáticamente por el sistema de gestión de APEX CONSULTING</p>
+          <p>Este reporte fue generado automáticamente por el sistema de gestión de ${companySettings?.company_name || "APEX CONSULTING"}</p>
           <p>Para consultas, contacte a: desarrollador@apexconsulting.com</p>
         </div>
 
@@ -1799,7 +1678,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}</pre>
         quotesCount={hourQuotes.length}
         hoursCount={hourEntries.length}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
