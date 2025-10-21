@@ -112,14 +112,14 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Horas Trabajadas</CardTitle>
+            <CardTitle className="text-sm font-medium">Horas Pendientes de Pago</CardTitle>
             <ClockIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{consumedHours}h</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-blue-600">
-                {remainingHours}h restantes de {totalHours}h totales
+              <span className="text-orange-600">
+                {clients.filter((c) => c.consumed_hours > 0).length} clientes con horas por cobrar
               </span>
             </p>
           </CardContent>
@@ -193,20 +193,25 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
 
       {/* Gráficos secundarios */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico de horas */}
+        {/* Gráfico de horas pendientes por cliente */}
         <Card>
           <CardHeader>
-            <CardTitle>Gestión de Horas</CardTitle>
-            <CardDescription>Distribución de horas por cliente</CardDescription>
+            <CardTitle>Horas Pendientes por Cliente</CardTitle>
+            <CardDescription>Clientes con horas por cobrar</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={hoursData}>
+              <BarChart
+                data={clients
+                  .filter((c) => c.consumed_hours > 0)
+                  .slice(0, 10)
+                  .map((c) => ({ name: c.name, hours: c.consumed_hours }))}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis />
-                <Tooltip formatter={(value) => [`${value}h`, "Horas"]} />
-                <Bar dataKey="hours" fill="#10b981" />
+                <Tooltip formatter={(value) => [`${value}h`, "Horas Pendientes"]} />
+                <Bar dataKey="hours" fill="#f97316" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
