@@ -92,6 +92,7 @@ export default function Dashboard() {
   const [configMessage, setConfigMessage] = useState("")
   const [configLoading, setConfigLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("dashboard")
+  const [budgetFilter, setBudgetFilter] = useState<"all" | "paid" | "pending" | "overdue">("all")
 
   // Estados para configuración de empresa y perfil
   const [companyName, setCompanyName] = useState("")
@@ -162,6 +163,13 @@ export default function Dashboard() {
     quantity: 0,
     rate: 0,
     unit: "",
+  })
+
+  // Estados para ajustes de horas
+  const [hourAdjustment, setHourAdjustment] = useState({
+    clientId: "",
+    hours: 0,
+    reason: "",
   })
 
   // Cargar configuraciones cuando cambien
@@ -683,6 +691,51 @@ export default function Dashboard() {
     }
   }
 
+  // Nueva función para ajustar horas
+  const adjustClientHours = async () => {
+    if (hourAdjustment.clientId && hourAdjustment.hours !== 0 && hourAdjustment.reason) {
+      const client = clients.find((c) => c.id === hourAdjustment.clientId)
+      if (client) {
+        // Crear una cotización automática con el ajuste
+        await saveHourQuote({
+          clientId: hourAdjustment.clientId,
+          clientName: client.name,
+          requestedHours: hourAdjustment.hours,
+          description: `Ajuste manual: ${hourAdjustment.reason}`,
+          project: "Ajuste de horas",
+        })
+
+        // Aprobar automáticamente la cotización
+        // Asumiendo que saveHourQuote añade la cita al principio del array, o necesitas obtenerla de forma diferente
+        // Esto es una suposición, puede que necesites refinar cómo obtener el ID de la cotización recién creada
+        const latestQuote = hourQuotes
+          .slice()
+          .sort((a, b) => new Date(b.request_date).getTime() - new Date(a.request_date).getTime())[0]
+
+        if (latestQuote) {
+          await updateHourQuote(latestQuote.id, {
+            ...latestQuote,
+            status: "approved",
+            approved_date: new Date().toISOString().split("T")[0],
+          })
+
+          // Actualizar las horas del cliente
+          const newTotalHours = Math.max(0, client.total_hours + hourAdjustment.hours)
+          await updateClient(client.id, {
+            ...client,
+            total_hours: newTotalHours,
+            remaining_hours: newTotalHours - client.consumed_hours,
+          })
+        }
+
+        setHourAdjustment({ clientId: "", hours: 0, reason: "" })
+        alert(
+          `Se ${hourAdjustment.hours > 0 ? "agregaron" : "restaron"} ${Math.abs(hourAdjustment.hours)} horas al cliente`,
+        )
+      }
+    }
+  }
+
   const handleDeleteHourEntry = async (entryId: string) => {
     if (confirm("¿Estás seguro de que quieres eliminar este registro de horas?")) {
       const entry = hourEntries.find((e) => e.id === entryId)
@@ -700,6 +753,42 @@ export default function Dashboard() {
       }
     }
   }
+
+  // <<< UPDATE 2 START >>>
+  const markHourAsPaid = async (entryId: string) => {
+    const entry = hourEntries.find((e) => e.id === entryId)
+    if (!entry) return
+
+    const confirmMessage = `¿Marcar como pagada ${entry.hours}h de "${entry.description}"?\n\nEsto reducirá las horas asignadas del cliente.`
+
+    if (confirm(confirmMessage)) {
+      const client = clients.find((c) => c.id === entry.client_id)
+      if (client) {
+        // Crear un ajuste negativo para restar las horas del balance
+        await saveHourQuote({
+          clientId: entry.client_id,
+          clientName: client.name,
+          requestedHours: -entry.hours,
+          description: `Pago de horas trabajadas: ${entry.description}`,
+          project: entry.project,
+        })
+
+        // Aprobar automáticamente la cotización
+        // Nota: Necesitarías obtener el ID de la cotización recién creada
+        // Por ahora, actualizaremos directamente el cliente
+
+        const newTotalHours = Math.max(0, client.total_hours - entry.hours)
+        await updateClient(client.id, {
+          ...client,
+          total_hours: newTotalHours,
+          remaining_hours: newTotalHours - client.consumed_hours,
+        })
+
+        alert(`Se marcaron ${entry.hours}h como pagadas y se restaron del balance del cliente`)
+      }
+    }
+  }
+  // <<< UPDATE 2 END >>>
 
   const getHoursForClient = (clientId: string) => {
     return hourEntries.filter((entry) => entry.client_id === clientId)
@@ -1055,109 +1144,153 @@ export default function Dashboard() {
 
       case "budgets":
         return (
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Lista de Presupuestos</CardTitle>
-                  <CardDescription>Gestiona todos tus presupuestos y su estado de pago</CardDescription>
-                </div>
-                <Link href="/budget-report">
-                  <Button>
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Nuevo Presupuesto
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {budgets.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">No hay presupuestos registrados.</p>
+          <div className="space-y-4">
+            {/* Filtros de presupuestos */}
+            <div className="flex gap-2 mb-4">
+              <Button
+                variant={budgetFilter === "all" ? "default" : "outline"}
+                onClick={() => setBudgetFilter("all")}
+                size="sm"
+              >
+                Todos ({budgets.length})
+              </Button>
+              <Button
+                variant={budgetFilter === "paid" ? "default" : "outline"}
+                onClick={() => setBudgetFilter("paid")}
+                size="sm"
+              >
+                Pagados ({budgets.filter((b) => b.status === "paid").length})
+              </Button>
+              <Button
+                variant={budgetFilter === "pending" ? "default" : "outline"}
+                onClick={() => setBudgetFilter("pending")}
+                size="sm"
+              >
+                Pendientes ({budgets.filter((b) => b.status === "pending").length})
+              </Button>
+              <Button
+                variant={budgetFilter === "overdue" ? "default" : "outline"}
+                onClick={() => setBudgetFilter("overdue")}
+                size="sm"
+              >
+                Vencidos ({budgets.filter((b) => b.status === "overdue").length})
+              </Button>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Lista de Presupuestos</CardTitle>
+                    <CardDescription>Gestiona todos tus presupuestos y su estado de pago</CardDescription>
+                  </div>
                   <Link href="/budget-report">
-                    <Button className="mt-4">
+                    <Button>
                       <PlusIcon className="h-4 w-4 mr-2" />
-                      Crear tu primer presupuesto
+                      Nuevo Presupuesto
                     </Button>
                   </Link>
                 </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Número</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Proyecto</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {budgets.map((budget) => (
-                      <TableRow key={budget.id}>
-                        <TableCell className="font-medium">#{budget.number}</TableCell>
-                        <TableCell>{budget.client_name}</TableCell>
-                        <TableCell>{budget.project_name}</TableCell>
-                        <TableCell>{new Date(budget.date).toLocaleDateString("es-ES")}</TableCell>
-                        <TableCell className="text-right">${budget.total.toLocaleString()}</TableCell>
-                        <TableCell>{getStatusBadge(budget.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => viewBudget(budget.id)}
-                              title="Ver presupuesto"
-                            >
-                              <EyeIcon className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => editBudget(budget.id)}
-                              title="Editar presupuesto"
-                            >
-                              <EditIcon className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => reprintBudget(budget.id)}
-                              title="Reimprimir presupuesto"
-                            >
-                              <PrinterIcon className="h-4 w-4 text-blue-500" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => toggleBudgetStatus(budget.id)}
-                              title={budget.status === "paid" ? "Marcar como pendiente" : "Marcar como pagado"}
-                            >
-                              {budget.status === "paid" ? (
-                                <XCircleIcon className="h-4 w-4 text-red-500" />
-                              ) : (
-                                <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteBudget(budget.id)}
-                              title="Eliminar presupuesto"
-                            >
-                              <TrashIcon className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                        </TableCell>
+              </CardHeader>
+              <CardContent>
+                {budgets.filter((b) => budgetFilter === "all" || b.status === budgetFilter).length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">
+                      {budgetFilter === "all"
+                        ? "No hay presupuestos registrados."
+                        : `No hay presupuestos ${
+                            budgetFilter === "paid" ? "pagados" : budgetFilter === "pending" ? "pendientes" : "vencidos"
+                          }.`}
+                    </p>
+                    {budgetFilter === "all" && (
+                      <Link href="/budget-report">
+                        <Button className="mt-4">
+                          <PlusIcon className="h-4 w-4 mr-2" />
+                          Crear tu primer presupuesto
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Número</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Proyecto</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {budgets
+                        .filter((b) => budgetFilter === "all" || b.status === budgetFilter)
+                        .map((budget) => (
+                          <TableRow key={budget.id}>
+                            <TableCell className="font-medium">#{budget.number}</TableCell>
+                            <TableCell>{budget.client_name}</TableCell>
+                            <TableCell>{budget.project_name}</TableCell>
+                            <TableCell>{new Date(budget.date).toLocaleDateString("es-ES")}</TableCell>
+                            <TableCell className="text-right">${budget.total.toLocaleString()}</TableCell>
+                            <TableCell>{getStatusBadge(budget.status)}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => viewBudget(budget.id)}
+                                  title="Ver presupuesto"
+                                >
+                                  <EyeIcon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => editBudget(budget.id)}
+                                  title="Editar presupuesto"
+                                >
+                                  <EditIcon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => reprintBudget(budget.id)}
+                                  title="Reimprimir presupuesto"
+                                >
+                                  <PrinterIcon className="h-4 w-4 text-blue-500" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => toggleBudgetStatus(budget.id)}
+                                  title={budget.status === "paid" ? "Marcar como pendiente" : "Marcar como pagado"}
+                                >
+                                  {budget.status === "paid" ? (
+                                    <XCircleIcon className="h-4 w-4 text-red-500" />
+                                  ) : (
+                                    <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteBudget(budget.id)}
+                                  title="Eliminar presupuesto"
+                                >
+                                  <TrashIcon className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )
 
       case "clients":
@@ -1302,7 +1435,9 @@ export default function Dashboard() {
                         <TableHead>Proyecto</TableHead>
                         <TableHead>Descripción</TableHead>
                         <TableHead className="text-right">Horas</TableHead>
-                        <TableHead>Acciones</TableHead>
+                        {/* <<< UPDATE 4 START >>> */}
+                        <TableHead className="w-[200px]">Acciones</TableHead>
+                        {/* <<< UPDATE 4 END >>> */}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1313,16 +1448,30 @@ export default function Dashboard() {
                           <TableCell>{entry.project}</TableCell>
                           <TableCell>{entry.description}</TableCell>
                           <TableCell className="text-right">{entry.hours}h</TableCell>
+                          {/* <<< UPDATE 3 START >>> */}
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteHourEntry(entry.id)}
-                              title="Eliminar registro"
-                            >
-                              <TrashIcon className="h-4 w-4 text-red-500" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => markHourAsPaid(entry.id)}
+                                title="Marcar como hora pagada"
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                Pagada
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteHourEntry(entry.id)}
+                                title="Eliminar registro"
+                              >
+                                <TrashIcon className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
                           </TableCell>
+                          {/* <<< UPDATE 3 END >>> */}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1398,6 +1547,65 @@ export default function Dashboard() {
                 )}
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Ajustar Horas Asignadas</CardTitle>
+                <CardDescription>Agregar o quitar horas directamente al balance del cliente</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="adjustClient">Cliente</Label>
+                  <select
+                    id="adjustClient"
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    value={hourAdjustment.clientId}
+                    onChange={(e) => setHourAdjustment({ ...hourAdjustment, clientId: e.target.value })}
+                  >
+                    <option value="">Seleccionar cliente</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name} ({client.total_hours}h asignadas)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adjustHours">Horas a Ajustar</Label>
+                  <Input
+                    id="adjustHours"
+                    type="number"
+                    value={hourAdjustment.hours}
+                    onChange={(e) => setHourAdjustment({ ...hourAdjustment, hours: Number(e.target.value) })}
+                    placeholder="10 (positivo = agregar, negativo = quitar)"
+                    step="0.5"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Usa números positivos para agregar horas, negativos para quitar horas
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adjustReason">Razón del Ajuste</Label>
+                  <Textarea
+                    id="adjustReason"
+                    value={hourAdjustment.reason}
+                    onChange={(e) => setHourAdjustment({ ...hourAdjustment, reason: e.target.value })}
+                    placeholder="Ej: Bono de horas por buen desempeño, Corrección de error en facturación..."
+                  />
+                </div>
+                <Button onClick={adjustClientHours} className="w-full" disabled={clients.length === 0}>
+                  <CheckCircleIcon className="h-4 w-4 mr-2" />
+                  Aplicar Ajuste
+                </Button>
+                {clients.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center">Primero debes agregar clientes para ajustar horas</p>
+                )}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                  <strong>💡 Nota:</strong> Este ajuste creará una cotización aprobada automáticamente y se reflejará en
+                  el historial del cliente.
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )
 
@@ -1420,10 +1628,14 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
+                        {/* <<< UPDATE 1 START >>> */}
+                        {/* Eliminated:
                         <div className="flex justify-between">
                           <span>Horas Asignadas:</span>
                           <span className="font-semibold">{client.total_hours}h</span>
                         </div>
+                        */}
+                        {/* <<< UPDATE 1 END >>> */}
                         <div className="flex justify-between">
                           <span>Horas Consumidas:</span>
                           <span className="font-semibold text-blue-600">{client.consumed_hours}h</span>
