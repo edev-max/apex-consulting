@@ -31,6 +31,7 @@ interface HourEntry {
   hours: number
   description: string
   project: string
+  paid: boolean // Agregar este campo
 }
 
 interface HourQuote {
@@ -396,6 +397,7 @@ export const useSupabaseData = () => {
         hours: entryData.hours,
         description: entryData.description,
         project: entryData.project,
+        paid: false, // Agregar este campo
         user_id: user.id,
       })
 
@@ -424,6 +426,27 @@ export const useSupabaseData = () => {
       await loadHourEntries()
     } catch (error) {
       console.error("Error deleting hour entry:", error)
+    }
+  }
+
+  const markHourEntryAsPaid = async (entryId: string) => {
+    if (!user || !tablesExist) return
+
+    try {
+      const { error } = await supabase
+        .from("hour_entries")
+        .update({ paid: true })
+        .eq("id", entryId)
+        .eq("user_id", user.id)
+
+      if (error) {
+        console.error("Error marking hour entry as paid:", error)
+        return
+      }
+
+      await loadHourEntries()
+    } catch (error) {
+      console.error("Error marking hour entry as paid:", error)
     }
   }
 
@@ -695,6 +718,7 @@ export const useSupabaseData = () => {
     deleteClient,
     saveHourEntry,
     deleteHourEntry,
+    markHourEntryAsPaid, // Agregar esta línea
     saveHourQuote,
     updateHourQuote,
     deleteHourQuote,

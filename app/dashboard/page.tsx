@@ -69,6 +69,7 @@ interface HourEntry {
   hours: number
   description: string
   project: string
+  paid?: boolean // Added for paid status
 }
 
 interface HourQuote {
@@ -118,6 +119,7 @@ export default function Dashboard() {
     deleteClient,
     saveHourEntry,
     deleteHourEntry,
+    markHourEntryAsPaid, // Added this line
     saveHourQuote,
     updateHourQuote,
     deleteHourQuote,
@@ -692,22 +694,21 @@ export default function Dashboard() {
     const entry = hourEntries.find((e) => e.id === entryId)
     if (!entry) return
 
-    const confirmMessage = `¿Marcar como pagada ${entry.hours}h de "${entry.description}"?\n\nEsto reducirá las horas pendientes Y sumará ${entry.hours}h a las horas asignadas del cliente.`
+    const confirmMessage = `¿Marcar como pagada ${entry.hours}h de "${entry.description}"?\n\nEsto reducirá las horas pendientes y marcará este registro como cerrado.`
 
     if (confirm(confirmMessage)) {
       const client = clients.find((c) => c.id === entry.client_id)
       if (client) {
-        // Restar las horas de consumed_hours Y sumar a total_hours
+        // Restar las horas de consumed_hours
         const newConsumedHours = Math.max(0, client.consumed_hours - entry.hours)
-        const newTotalHours = client.total_hours + entry.hours
-        const newRemainingHours = newTotalHours - newConsumedHours
 
         await updateClient(client.id, {
           ...client,
           consumed_hours: newConsumedHours,
-          total_hours: newTotalHours,
-          remaining_hours: newRemainingHours,
         })
+
+        // Marcar el registro como pagado (en lugar de eliminarlo)
+        await markHourEntryAsPaid(entryId)
 
         // Crear un registro de cotización para el historial
         await saveHourQuote({
@@ -719,7 +720,7 @@ export default function Dashboard() {
         })
 
         alert(
-          `✅ Se marcaron ${entry.hours}h como pagadas\n\n📊 Cambios:\n• Horas Pendientes: ${client.consumed_hours}h → ${newConsumedHours}h\n• Horas Asignadas: ${client.total_hours}h → ${newTotalHours}h\n• Horas Restantes: ${client.remaining_hours}h → ${newRemainingHours}h`,
+          `✅ Se marcaron ${entry.hours}h como pagadas\n\n📊 Cambios:\n• Horas Pendientes: ${client.consumed_hours}h → ${newConsumedHours}h\n• El registro se marcó como cerrado`,
         )
       }
     }
@@ -1332,24 +1333,40 @@ export default function Dashboard() {
                     </TableHeader>
                     <TableBody>
                       {hourEntries.map((entry) => (
-                        <TableRow key={entry.id}>
-                          <TableCell>{new Date(entry.date).toLocaleDateString("es-ES")}</TableCell>
-                          <TableCell>{entry.client_name}</TableCell>
-                          <TableCell>{entry.project}</TableCell>
-                          <TableCell>{entry.description}</TableCell>
-                          <TableCell className="text-right">{entry.hours}h</TableCell>
+                        <TableRow key={entry.id} className={entry.paid ? "bg-green-50 opacity-75" : ""}>
+                          <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
+                            {new Date(entry.date).toLocaleDateString("es-ES")}
+                          </TableCell>
+                          <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
+                            {entry.client_name}
+                          </TableCell>
+                          <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
+                            {entry.project}
+                          </TableCell>
+                          <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
+                            {entry.description}
+                          </TableCell>
+                          <TableCell className={`text-right ${entry.paid ? "line-through text-gray-500" : ""}`}>
+                            {entry.hours}h
+                            {entry.paid && <Badge className="ml-2 bg-green-600 text-white text-xs">Pagado</Badge>}
+                          </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => markHourAsPaid(entry.id)}
-                                title="Marcar como hora pagada"
-                                className="text-green-600 hover:text-green-700"
-                              >
-                                <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                Pagada
-                              </Button>
+                              {!entry.paid && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => markHourAsPaid(entry.id)}
+                                  title="Marcar como hora pagada"
+                                  className="text-green-600 hover:text-green-700"
+                                >
+                                  <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                  Pagada
+                                </Button>
+                              )}
+                              {entry.paid && (
+                                <span className="text-sm text-green-600 font-medium px-2 py-1">✓ Cerrado</span>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
