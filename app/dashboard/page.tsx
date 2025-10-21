@@ -692,16 +692,21 @@ export default function Dashboard() {
     const entry = hourEntries.find((e) => e.id === entryId)
     if (!entry) return
 
-    const confirmMessage = `¿Marcar como pagada ${entry.hours}h de "${entry.description}"?\n\nEsto reducirá las horas trabajadas pendientes del cliente.`
+    const confirmMessage = `¿Marcar como pagada ${entry.hours}h de "${entry.description}"?\n\nEsto reducirá las horas pendientes Y sumará ${entry.hours}h a las horas asignadas del cliente.`
 
     if (confirm(confirmMessage)) {
       const client = clients.find((c) => c.id === entry.client_id)
       if (client) {
-        // Restar las horas de consumed_hours
+        // Restar las horas de consumed_hours Y sumar a total_hours
         const newConsumedHours = Math.max(0, client.consumed_hours - entry.hours)
+        const newTotalHours = client.total_hours + entry.hours
+        const newRemainingHours = newTotalHours - newConsumedHours
+
         await updateClient(client.id, {
           ...client,
           consumed_hours: newConsumedHours,
+          total_hours: newTotalHours,
+          remaining_hours: newRemainingHours,
         })
 
         // Crear un registro de cotización para el historial
@@ -713,7 +718,9 @@ export default function Dashboard() {
           project: entry.project,
         })
 
-        alert(`Se marcaron ${entry.hours}h como pagadas y se restaron de las horas pendientes`)
+        alert(
+          `✅ Se marcaron ${entry.hours}h como pagadas\n\n📊 Cambios:\n• Horas Pendientes: ${client.consumed_hours}h → ${newConsumedHours}h\n• Horas Asignadas: ${client.total_hours}h → ${newTotalHours}h\n• Horas Restantes: ${client.remaining_hours}h → ${newRemainingHours}h`,
+        )
       }
     }
   }

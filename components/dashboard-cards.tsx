@@ -40,9 +40,7 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
   const totalPaidRevenue = paidBudgets.reduce((sum, budget) => sum + budget.total, 0)
   const totalPendingRevenue = pendingBudgets.reduce((sum, budget) => sum + budget.total, 0)
 
-  const totalHours = clients.reduce((sum, client) => sum + client.total_hours, 0)
   const consumedHours = clients.reduce((sum, client) => sum + client.consumed_hours, 0)
-  const remainingHours = clients.reduce((sum, client) => sum + client.remaining_hours, 0)
 
   const pendingQuotes = hourQuotes.filter((q) => q.status === "pending")
   const approvedQuotes = hourQuotes.filter((q) => q.status === "approved")
@@ -59,20 +57,13 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
     { name: "Ingresos Pendientes", amount: totalPendingRevenue },
   ]
 
-  const hoursData = [
-    { name: "Horas Asignadas", hours: totalHours },
-    { name: "Horas Consumidas", hours: consumedHours },
-    { name: "Horas Restantes", hours: remainingHours },
-  ]
-
-  // Datos de actividad mensual (simulados basados en fechas)
+  // Datos de actividad mensual (simulados)
   const getMonthlyData = () => {
     const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"]
-    return months.map((month, index) => ({
+    return months.map((month) => ({
       month,
       presupuestos: Math.floor(Math.random() * 10) + 1,
       ingresos: Math.floor(Math.random() * 50000) + 10000,
-      horas: Math.floor(Math.random() * 200) + 50,
     }))
   }
 
@@ -105,7 +96,7 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
           <CardContent>
             <div className="text-2xl font-bold">{clients.length}</div>
             <p className="text-xs text-muted-foreground">
-              {clients.filter((c) => c.remaining_hours > 0).length} con horas disponibles
+              {clients.filter((c) => c.consumed_hours > 0).length} con horas pendientes
             </p>
           </CardContent>
         </Card>
@@ -272,7 +263,7 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
             <p className="text-sm text-muted-foreground mt-2">Este mes</p>
             <div className="mt-2 text-sm">
               <div className="text-green-600 font-medium">
-                +{approvedQuotes.reduce((sum, q) => sum + q.requested_hours, 0)}h aprobadas
+                {approvedQuotes.reduce((sum, q) => sum + q.requested_hours, 0)}h aprobadas
               </div>
             </div>
           </CardContent>
@@ -281,20 +272,20 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUpIcon className="h-5 w-5 text-blue-500" />
-              Clientes en Sobregiro
+              <ClockIcon className="h-5 w-5 text-orange-500" />
+              Horas por Cobrar
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">{clients.filter((c) => c.remaining_hours < 0).length}</div>
-            <p className="text-sm text-muted-foreground mt-2">Requieren más horas</p>
+            <div className="text-3xl font-bold text-orange-600">{consumedHours}h</div>
+            <p className="text-sm text-muted-foreground mt-2">Total pendientes de pago</p>
             {clients
-              .filter((c) => c.remaining_hours < 0)
+              .filter((c) => c.consumed_hours > 0)
               .slice(0, 3)
               .map((client) => (
-                <div key={client.id} className="mt-2 p-2 bg-red-50 rounded text-sm">
+                <div key={client.id} className="mt-2 p-2 bg-orange-50 rounded text-sm">
                   <div className="font-medium">{client.name}</div>
-                  <div className="text-xs text-red-600">{client.remaining_hours}h sobregiro</div>
+                  <div className="text-xs text-orange-600">{client.consumed_hours}h pendientes</div>
                 </div>
               ))}
           </CardContent>

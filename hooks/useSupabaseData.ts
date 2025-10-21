@@ -20,9 +20,7 @@ interface Client {
   id: string
   name: string
   email: string
-  total_hours: number
   consumed_hours: number
-  remaining_hours: number
 }
 
 interface HourEntry {
@@ -76,7 +74,6 @@ export const useSupabaseData = () => {
     if (!user) return false
 
     try {
-      // Intentar hacer una consulta simple a cada tabla
       const tables = ["budgets", "clients", "hour_entries", "hour_quotes", "company_settings", "user_profiles"]
       const tableChecks = await Promise.all(
         tables.map(async (table) => {
@@ -124,7 +121,6 @@ export const useSupabaseData = () => {
 
     setLoading(true)
 
-    // Primero verificar que las tablas existan
     const tablesOk = await checkTablesExist()
 
     if (!tablesOk) {
@@ -162,9 +158,6 @@ export const useSupabaseData = () => {
 
       if (error) {
         console.error("Error loading budgets:", error)
-        if (error.message.includes("does not exist") || error.message.includes("schema cache")) {
-          setDbError("La tabla 'budgets' no existe. Ejecuta los scripts SQL primero.")
-        }
         return
       }
 
@@ -183,7 +176,6 @@ export const useSupabaseData = () => {
       )
     } catch (error) {
       console.error("Error loading budgets:", error)
-      setDbError("Error cargando presupuestos")
     }
   }
 
@@ -317,6 +309,7 @@ export const useSupabaseData = () => {
       const { error } = await supabase.from("clients").insert({
         name: clientData.name,
         email: clientData.email,
+        consumed_hours: 0,
         user_id: user.id,
       })
 
@@ -542,7 +535,6 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
-      // First, try to get existing settings
       const { data: existingSettings } = await supabase
         .from("company_settings")
         .select("*")
@@ -552,7 +544,6 @@ export const useSupabaseData = () => {
       let data, error
 
       if (existingSettings) {
-        // Update existing settings
         const result = await supabase
           .from("company_settings")
           .update({
@@ -566,7 +557,6 @@ export const useSupabaseData = () => {
         data = result.data
         error = result.error
       } else {
-        // Insert new settings
         const result = await supabase
           .from("company_settings")
           .insert({
@@ -616,13 +606,11 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
-      // First, try to get existing profile
       const { data: existingProfile } = await supabase.from("user_profiles").select("*").eq("user_id", user.id).single()
 
       let data, error
 
       if (existingProfile) {
-        // Update existing profile
         const result = await supabase
           .from("user_profiles")
           .update({
@@ -636,7 +624,6 @@ export const useSupabaseData = () => {
         data = result.data
         error = result.error
       } else {
-        // Insert new profile
         const result = await supabase
           .from("user_profiles")
           .insert({
@@ -664,7 +651,6 @@ export const useSupabaseData = () => {
     }
   }
 
-  // Función para subir archivos a Supabase Storage
   const uploadFile = async (file: File, bucket: string, path: string) => {
     if (!user) return null
 
@@ -691,7 +677,6 @@ export const useSupabaseData = () => {
   }
 
   return {
-    // Data
     budgets,
     clients,
     hourEntries,
@@ -701,36 +686,22 @@ export const useSupabaseData = () => {
     loading,
     tablesExist,
     dbError,
-
-    // Budget functions
     saveBudget,
     updateBudget,
     deleteBudget,
     getNextBudgetNumber,
-
-    // Client functions
     saveClient,
     updateClient,
     deleteClient,
-
-    // Hour entry functions
     saveHourEntry,
     deleteHourEntry,
-
-    // Hour quote functions
     saveHourQuote,
     updateHourQuote,
     deleteHourQuote,
-
-    // Company settings functions
     loadCompanySettings,
     saveCompanySettings,
-
-    // User profile functions
     loadUserProfile,
     saveUserProfile,
-
-    // Utility
     loadAllData,
     checkTablesExist,
     uploadFile,
