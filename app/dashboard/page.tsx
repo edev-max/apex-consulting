@@ -165,13 +165,6 @@ export default function Dashboard() {
     unit: "",
   })
 
-  // Estados para ajustes de horas
-  const [hourAdjustment, setHourAdjustment] = useState({
-    clientId: "",
-    hours: 0,
-    reason: "",
-  })
-
   // Cargar configuraciones cuando cambien
   useEffect(() => {
     if (companySettings) {
@@ -438,7 +431,6 @@ export default function Dashboard() {
     const budget = budgets.find((b) => b.id === budgetId)
     if (!budget) return
 
-    // Crear una nueva ventana para reimprimir el presupuesto
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
 
@@ -608,7 +600,7 @@ export default function Dashboard() {
     }
   }
 
-  // Funciones para manejar cotizaciones de horas
+  // Funciones para manejar cotizaciones de horas - SIMPLIFICADAS
   const addHourQuote = async () => {
     if (newHourQuote.clientId && newHourQuote.requestedHours !== 0 && newHourQuote.description) {
       const client = clients.find((c) => c.id === newHourQuote.clientId)
@@ -628,23 +620,11 @@ export default function Dashboard() {
   const approveHourQuote = async (quoteId: string) => {
     const quote = hourQuotes.find((q) => q.id === quoteId)
     if (quote) {
-      // Actualizar la cotización como aprobada
       await updateHourQuote(quoteId, {
         ...quote,
         status: "approved",
         approved_date: new Date().toISOString().split("T")[0],
       })
-
-      // Actualizar las horas del cliente
-      const client = clients.find((c) => c.id === quote.client_id)
-      if (client) {
-        const newTotalHours = Math.max(0, client.total_hours + quote.requested_hours)
-        await updateClient(client.id, {
-          ...client,
-          total_hours: newTotalHours,
-          remaining_hours: newTotalHours - client.consumed_hours,
-        })
-      }
     }
   }
 
@@ -666,7 +646,7 @@ export default function Dashboard() {
     }
   }
 
-  // Funciones para manejar horas
+  // Funciones para manejar horas - SIMPLIFICADAS
   const addHourEntry = async () => {
     if (newHourEntry.clientId && newHourEntry.hours > 0 && newHourEntry.description) {
       const client = clients.find((c) => c.id === newHourEntry.clientId)
@@ -679,59 +659,13 @@ export default function Dashboard() {
           project: newHourEntry.project,
         })
 
-        // Actualizar horas del cliente
+        // Solo actualizar horas consumidas
         await updateClient(client.id, {
           ...client,
           consumed_hours: client.consumed_hours + newHourEntry.hours,
-          remaining_hours: client.remaining_hours - newHourEntry.hours,
         })
 
         setNewHourEntry({ clientId: "", hours: 0, description: "", project: "" })
-      }
-    }
-  }
-
-  // Nueva función para ajustar horas
-  const adjustClientHours = async () => {
-    if (hourAdjustment.clientId && hourAdjustment.hours !== 0 && hourAdjustment.reason) {
-      const client = clients.find((c) => c.id === hourAdjustment.clientId)
-      if (client) {
-        // Crear una cotización automática con el ajuste
-        await saveHourQuote({
-          clientId: hourAdjustment.clientId,
-          clientName: client.name,
-          requestedHours: hourAdjustment.hours,
-          description: `Ajuste manual: ${hourAdjustment.reason}`,
-          project: "Ajuste de horas",
-        })
-
-        // Aprobar automáticamente la cotización
-        // Asumiendo que saveHourQuote añade la cita al principio del array, o necesitas obtenerla de forma diferente
-        // Esto es una suposición, puede que necesites refinar cómo obtener el ID de la cotización recién creada
-        const latestQuote = hourQuotes
-          .slice()
-          .sort((a, b) => new Date(b.request_date).getTime() - new Date(a.request_date).getTime())[0]
-
-        if (latestQuote) {
-          await updateHourQuote(latestQuote.id, {
-            ...latestQuote,
-            status: "approved",
-            approved_date: new Date().toISOString().split("T")[0],
-          })
-
-          // Actualizar las horas del cliente
-          const newTotalHours = Math.max(0, client.total_hours + hourAdjustment.hours)
-          await updateClient(client.id, {
-            ...client,
-            total_hours: newTotalHours,
-            remaining_hours: newTotalHours - client.consumed_hours,
-          })
-        }
-
-        setHourAdjustment({ clientId: "", hours: 0, reason: "" })
-        alert(
-          `Se ${hourAdjustment.hours > 0 ? "agregaron" : "restaron"} ${Math.abs(hourAdjustment.hours)} horas al cliente`,
-        )
       }
     }
   }
@@ -742,11 +676,10 @@ export default function Dashboard() {
       if (entry) {
         const client = clients.find((c) => c.id === entry.client_id)
         if (client) {
-          // Devolver las horas al cliente
+          // Devolver las horas consumidas
           await updateClient(client.id, {
             ...client,
-            consumed_hours: client.consumed_hours - entry.hours,
-            remaining_hours: client.remaining_hours + entry.hours,
+            consumed_hours: Math.max(0, client.consumed_hours - entry.hours),
           })
         }
         await deleteHourEntry(entryId)
@@ -754,17 +687,24 @@ export default function Dashboard() {
     }
   }
 
-  // <<< UPDATE 2 START >>>
+  // Función actualizada para marcar hora como pagada
   const markHourAsPaid = async (entryId: string) => {
     const entry = hourEntries.find((e) => e.id === entryId)
     if (!entry) return
 
-    const confirmMessage = `¿Marcar como pagada ${entry.hours}h de "${entry.description}"?\n\nEsto reducirá las horas asignadas del cliente.`
+    const confirmMessage = `¿Marcar como pagada ${entry.hours}h de "${entry.description}"?\n\nEsto reducirá las horas trabajadas pendientes del cliente.`
 
     if (confirm(confirmMessage)) {
       const client = clients.find((c) => c.id === entry.client_id)
       if (client) {
-        // Crear un ajuste negativo para restar las horas del balance
+        // Restar las horas de consumed_hours
+        const newConsumedHours = Math.max(0, client.consumed_hours - entry.hours)
+        await updateClient(client.id, {
+          ...client,
+          consumed_hours: newConsumedHours,
+        })
+
+        // Crear un registro de cotización para el historial
         await saveHourQuote({
           clientId: entry.client_id,
           clientName: client.name,
@@ -773,28 +713,16 @@ export default function Dashboard() {
           project: entry.project,
         })
 
-        // Aprobar automáticamente la cotización
-        // Nota: Necesitarías obtener el ID de la cotización recién creada
-        // Por ahora, actualizaremos directamente el cliente
-
-        const newTotalHours = Math.max(0, client.total_hours - entry.hours)
-        await updateClient(client.id, {
-          ...client,
-          total_hours: newTotalHours,
-          remaining_hours: newTotalHours - client.consumed_hours,
-        })
-
-        alert(`Se marcaron ${entry.hours}h como pagadas y se restaron del balance del cliente`)
+        alert(`Se marcaron ${entry.hours}h como pagadas y se restaron de las horas pendientes`)
       }
     }
   }
-  // <<< UPDATE 2 END >>>
 
   const getHoursForClient = (clientId: string) => {
     return hourEntries.filter((entry) => entry.client_id === clientId)
   }
 
-  // Función para generar reporte PDF del cliente
+  // Función para generar reporte PDF del cliente - ACTUALIZADA
   const generateClientReport = (clientId: string) => {
     const client = clients.find((c) => c.id === clientId)
     if (!client) return
@@ -802,7 +730,6 @@ export default function Dashboard() {
     const clientHours = getHoursForClient(clientId)
     const approvedQuotes = hourQuotes.filter((q) => q.client_id === clientId && q.status === "approved")
 
-    // Crear una nueva ventana para el reporte
     const reportWindow = window.open("", "_blank")
     if (!reportWindow) return
 
@@ -826,8 +753,6 @@ export default function Dashboard() {
           table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
           th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
           th { background-color: #f5f5f5; font-weight: bold; }
-          .progress-bar { width: 100%; height: 20px; background-color: #e0e0e0; border-radius: 10px; overflow: hidden; }
-          .progress-fill { height: 100%; background: linear-gradient(90deg, #4caf50, #2196f3); }
           .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }
           @media print {
             body { margin: 0; }
@@ -858,40 +783,22 @@ export default function Dashboard() {
 
         <div class="summary">
           <div class="summary-item">
-            <div class="summary-value">${client.total_hours}h</div>
-            <div class="summary-label">Horas Totales</div>
-          </div>
-          <div class="summary-item">
             <div class="summary-value">${client.consumed_hours}h</div>
-            <div class="summary-label">Horas Consumidas</div>
+            <div class="summary-label">Horas Pendientes de Pago</div>
           </div>
-          <div class="summary-item">
-            <div class="summary-value">${client.remaining_hours}h</div>
-            <div class="summary-label">Horas Restantes</div>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 30px;">
-          <h3>Progreso General</h3>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width: ${(client.consumed_hours / client.total_hours) * 100}%"></div>
-          </div>
-          <p style="text-align: center; margin-top: 10px;">
-            ${Math.round((client.consumed_hours / client.total_hours) * 100)}% completado
-          </p>
         </div>
 
         ${
           approvedQuotes.length > 0
             ? `
-        <h3>Cotizaciones Aprobadas</h3>
+        <h3>Historial de Ajustes</h3>
         <table>
           <thead>
             <tr>
-              <th>Fecha Aprobación</th>
+              <th>Fecha</th>
               <th>Proyecto</th>
               <th>Descripción</th>
-              <th>Horas Aprobadas</th>
+              <th>Ajuste de Horas</th>
             </tr>
           </thead>
           <tbody>
@@ -899,7 +806,7 @@ export default function Dashboard() {
               .map(
                 (quote) => `
               <tr>
-                <td>${quote.approved_date ? new Date(quote.approved_date).toLocaleDateString("es-ES") : "-"}</td>
+                <td>${quote.approved_date ? new Date(quote.approved_date).toLocaleDateString("es-ES") : new Date(quote.request_date).toLocaleDateString("es-ES")}</td>
                 <td>${quote.project}</td>
                 <td>${quote.description}</td>
                 <td style="color: ${quote.requested_hours < 0 ? "#dc2626" : "#059669"}; font-weight: bold;">
@@ -973,7 +880,7 @@ export default function Dashboard() {
       case "dashboard":
         return "Dashboard General"
       case "quotes":
-        return "Cotizaciones de Horas"
+        return "Historial de Ajustes"
       case "budgets":
         return "Gestión de Presupuestos"
       case "clients":
@@ -999,13 +906,13 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Cotizaciones de Horas</CardTitle>
-                <CardDescription>Solicitudes de horas de los clientes pendientes de aprobación</CardDescription>
+                <CardTitle>Historial de Ajustes</CardTitle>
+                <CardDescription>Registros de ajustes de horas y pagos realizados</CardDescription>
               </CardHeader>
               <CardContent>
                 {hourQuotes.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">No hay cotizaciones de horas.</p>
+                    <p className="text-gray-500">No hay registros de ajustes.</p>
                   </div>
                 ) : (
                   <Table>
@@ -1014,7 +921,7 @@ export default function Dashboard() {
                         <TableHead>Cliente</TableHead>
                         <TableHead>Proyecto</TableHead>
                         <TableHead>Descripción</TableHead>
-                        <TableHead className="text-right">Horas</TableHead>
+                        <TableHead className="text-right">Ajuste</TableHead>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead>Acciones</TableHead>
@@ -1027,7 +934,13 @@ export default function Dashboard() {
                           <TableCell>{quote.project}</TableCell>
                           <TableCell>{quote.description}</TableCell>
                           <TableCell className="text-right">
-                            <span className={quote.requested_hours < 0 ? "text-red-600 font-semibold" : ""}>
+                            <span
+                              className={
+                                quote.requested_hours < 0
+                                  ? "text-red-600 font-semibold"
+                                  : "text-green-600 font-semibold"
+                              }
+                            >
                               {quote.requested_hours > 0 ? "+" : ""}
                               {quote.requested_hours}h
                             </span>
@@ -1042,7 +955,7 @@ export default function Dashboard() {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => approveHourQuote(quote.id)}
-                                    title="Aprobar cotización"
+                                    title="Aprobar ajuste"
                                   >
                                     <CheckIcon className="h-4 w-4 text-green-500" />
                                   </Button>
@@ -1050,7 +963,7 @@ export default function Dashboard() {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => rejectHourQuote(quote.id)}
-                                    title="Rechazar cotización"
+                                    title="Rechazar ajuste"
                                   >
                                     <XCircleIcon className="h-4 w-4 text-red-500" />
                                   </Button>
@@ -1060,7 +973,7 @@ export default function Dashboard() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => deleteHourQuote(quote.id)}
-                                title="Eliminar cotización"
+                                title="Eliminar registro"
                               >
                                 <TrashIcon className="h-4 w-4 text-red-500" />
                               </Button>
@@ -1076,8 +989,8 @@ export default function Dashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Nueva Cotización</CardTitle>
-                <CardDescription>Registra una solicitud de horas de un cliente</CardDescription>
+                <CardTitle>Nuevo Ajuste Manual</CardTitle>
+                <CardDescription>Registra un ajuste manual de horas (opcional)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -1106,7 +1019,7 @@ export default function Dashboard() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="quoteHours">Horas Solicitadas</Label>
+                  <Label htmlFor="quoteHours">Ajuste de Horas</Label>
                   <Input
                     id="quoteHours"
                     type="number"
@@ -1115,9 +1028,7 @@ export default function Dashboard() {
                     placeholder="10 (usar - para restar horas)"
                     step="0.5"
                   />
-                  <p className="text-xs text-gray-500">
-                    Usa números positivos para agregar horas, negativos para restar horas del cliente
-                  </p>
+                  <p className="text-xs text-gray-500">Usa números negativos para marcar pagos manuales</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="quoteDescription">Descripción</Label>
@@ -1125,17 +1036,15 @@ export default function Dashboard() {
                     id="quoteDescription"
                     value={newHourQuote.description}
                     onChange={(e) => setNewHourQuote({ ...newHourQuote, description: e.target.value })}
-                    placeholder="Describe el trabajo solicitado..."
+                    placeholder="Describe el ajuste..."
                   />
                 </div>
                 <Button onClick={addHourQuote} className="w-full" disabled={clients.length === 0}>
                   <PlusIcon className="h-4 w-4 mr-2" />
-                  Crear Cotización
+                  Registrar Ajuste
                 </Button>
                 {clients.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center">
-                    Primero debes agregar clientes para crear cotizaciones
-                  </p>
+                  <p className="text-sm text-gray-500 text-center">Primero debes agregar clientes</p>
                 )}
               </CardContent>
             </Card>
@@ -1145,7 +1054,6 @@ export default function Dashboard() {
       case "budgets":
         return (
           <div className="space-y-4">
-            {/* Filtros de presupuestos */}
             <div className="flex gap-2 mb-4">
               <Button
                 variant={budgetFilter === "all" ? "default" : "outline"}
@@ -1299,7 +1207,7 @@ export default function Dashboard() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Lista de Clientes</CardTitle>
-                <CardDescription>Gestiona tus clientes y sus horas asignadas</CardDescription>
+                <CardDescription>Gestiona tus clientes y sus horas pendientes de pago</CardDescription>
               </CardHeader>
               <CardContent>
                 {clients.length === 0 ? (
@@ -1312,10 +1220,7 @@ export default function Dashboard() {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead className="text-right">Horas Totales</TableHead>
-                        <TableHead className="text-right">Consumidas</TableHead>
-                        <TableHead className="text-right">Restantes</TableHead>
-                        <TableHead>Progreso</TableHead>
+                        <TableHead className="text-right">Horas Pendientes</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1324,29 +1229,12 @@ export default function Dashboard() {
                         <TableRow key={client.id}>
                           <TableCell className="font-medium">{client.name}</TableCell>
                           <TableCell>{client.email}</TableCell>
-                          <TableCell className="text-right">{client.total_hours}h</TableCell>
-                          <TableCell className="text-right">{client.consumed_hours}h</TableCell>
                           <TableCell className="text-right">
-                            <span className={client.remaining_hours < 0 ? "text-red-600 font-semibold" : ""}>
-                              {client.remaining_hours}h
+                            <span
+                              className={client.consumed_hours > 0 ? "text-orange-600 font-semibold" : "text-gray-600"}
+                            >
+                              {client.consumed_hours}h
                             </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  client.consumed_hours > client.total_hours ? "bg-red-500" : "bg-blue-600"
-                                }`}
-                                style={{
-                                  width: `${Math.min((client.consumed_hours / client.total_hours) * 100, 100)}%`,
-                                }}
-                              ></div>
-                              {client.consumed_hours > client.total_hours && (
-                                <div className="text-xs text-red-600 mt-1 font-semibold">
-                                  SOBREGIRO: {client.consumed_hours - client.total_hours}h
-                                </div>
-                              )}
-                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
@@ -1405,9 +1293,6 @@ export default function Dashboard() {
                   <PlusIcon className="h-4 w-4 mr-2" />
                   Agregar Cliente
                 </Button>
-                <p className="text-sm text-gray-500 text-center">
-                  Las horas se asignarán automáticamente desde las cotizaciones aprobadas
-                </p>
               </CardContent>
             </Card>
           </div>
@@ -1418,7 +1303,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Registro de Horas</CardTitle>
+                <CardTitle>Registro de Horas Trabajadas</CardTitle>
                 <CardDescription>Historial de horas trabajadas por cliente</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1435,9 +1320,7 @@ export default function Dashboard() {
                         <TableHead>Proyecto</TableHead>
                         <TableHead>Descripción</TableHead>
                         <TableHead className="text-right">Horas</TableHead>
-                        {/* <<< UPDATE 4 START >>> */}
                         <TableHead className="w-[200px]">Acciones</TableHead>
-                        {/* <<< UPDATE 4 END >>> */}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1448,7 +1331,6 @@ export default function Dashboard() {
                           <TableCell>{entry.project}</TableCell>
                           <TableCell>{entry.description}</TableCell>
                           <TableCell className="text-right">{entry.hours}h</TableCell>
-                          {/* <<< UPDATE 3 START >>> */}
                           <TableCell>
                             <div className="flex gap-2">
                               <Button
@@ -1471,7 +1353,6 @@ export default function Dashboard() {
                               </Button>
                             </div>
                           </TableCell>
-                          {/* <<< UPDATE 3 END >>> */}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1482,7 +1363,7 @@ export default function Dashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Registrar Horas</CardTitle>
+                <CardTitle>Registrar Horas Trabajadas</CardTitle>
                 <CardDescription>Añade tiempo trabajado para un cliente</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1497,11 +1378,7 @@ export default function Dashboard() {
                     <option value="">Seleccionar cliente</option>
                     {clients.map((client) => (
                       <option key={client.id} value={client.id}>
-                        {client.name} (
-                        {client.remaining_hours < 0
-                          ? `${client.remaining_hours}h SOBREGIRO`
-                          : `${client.remaining_hours}h restantes`}
-                        )
+                        {client.name} ({client.consumed_hours}h pendientes)
                       </option>
                     ))}
                   </select>
@@ -1547,65 +1424,6 @@ export default function Dashboard() {
                 )}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Ajustar Horas Asignadas</CardTitle>
-                <CardDescription>Agregar o quitar horas directamente al balance del cliente</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="adjustClient">Cliente</Label>
-                  <select
-                    id="adjustClient"
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    value={hourAdjustment.clientId}
-                    onChange={(e) => setHourAdjustment({ ...hourAdjustment, clientId: e.target.value })}
-                  >
-                    <option value="">Seleccionar cliente</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.name} ({client.total_hours}h asignadas)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="adjustHours">Horas a Ajustar</Label>
-                  <Input
-                    id="adjustHours"
-                    type="number"
-                    value={hourAdjustment.hours}
-                    onChange={(e) => setHourAdjustment({ ...hourAdjustment, hours: Number(e.target.value) })}
-                    placeholder="10 (positivo = agregar, negativo = quitar)"
-                    step="0.5"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Usa números positivos para agregar horas, negativos para quitar horas
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="adjustReason">Razón del Ajuste</Label>
-                  <Textarea
-                    id="adjustReason"
-                    value={hourAdjustment.reason}
-                    onChange={(e) => setHourAdjustment({ ...hourAdjustment, reason: e.target.value })}
-                    placeholder="Ej: Bono de horas por buen desempeño, Corrección de error en facturación..."
-                  />
-                </div>
-                <Button onClick={adjustClientHours} className="w-full" disabled={clients.length === 0}>
-                  <CheckCircleIcon className="h-4 w-4 mr-2" />
-                  Aplicar Ajuste
-                </Button>
-                {clients.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center">Primero debes agregar clientes para ajustar horas</p>
-                )}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
-                  <strong>💡 Nota:</strong> Este ajuste creará una cotización aprobada automáticamente y se reflejará en
-                  el historial del cliente.
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )
 
@@ -1624,34 +1442,13 @@ export default function Dashboard() {
                   <Card key={client.id}>
                     <CardHeader>
                       <CardTitle className="text-lg">{client.name}</CardTitle>
-                      <CardDescription>Reporte de horas consumidas</CardDescription>
+                      <CardDescription>Reporte de horas trabajadas</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {/* <<< UPDATE 1 START >>> */}
-                        {/* Eliminated:
-                        <div className="flex justify-between">
-                          <span>Horas Asignadas:</span>
-                          <span className="font-semibold">{client.total_hours}h</span>
-                        </div>
-                        */}
-                        {/* <<< UPDATE 1 END >>> */}
-                        <div className="flex justify-between">
-                          <span>Horas Consumidas:</span>
-                          <span className="font-semibold text-blue-600">{client.consumed_hours}h</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Horas Restantes:</span>
-                          <span className="font-semibold text-green-600">{client.remaining_hours}h</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div
-                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full"
-                            style={{ width: `${(client.consumed_hours / client.total_hours) * 100}%` }}
-                          ></div>
-                        </div>
-                        <div className="text-center text-sm text-gray-600">
-                          {Math.round((client.consumed_hours / client.total_hours) * 100)}% completado
+                        <div className="flex justify-between items-center p-4 bg-orange-50 rounded-lg">
+                          <span className="text-sm font-medium">Horas Pendientes de Pago:</span>
+                          <span className="text-2xl font-bold text-orange-600">{client.consumed_hours}h</span>
                         </div>
 
                         <Button
@@ -1952,7 +1749,6 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-6">
-                {/* Información del Cliente y Proyecto */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="modalClientName">Cliente</Label>
@@ -1990,7 +1786,6 @@ export default function Dashboard() {
                   <div className="p-2">{getStatusBadge(selectedBudget.status)}</div>
                 </div>
 
-                {/* Ítems del Presupuesto */}
                 {selectedBudget.items && selectedBudget.items.length > 0 && (
                   <div>
                     <Label className="text-lg font-semibold">Ítems del Presupuesto</Label>
@@ -2049,8 +1844,6 @@ export default function Dashboard() {
                                         const updatedItems = [...selectedBudget.items]
                                         const newQuantity = Number(e.target.value) || 0
                                         updatedItems[index] = { ...updatedItems[index], quantity: newQuantity }
-
-                                        // Recalcular total del presupuesto
                                         const newTotal = updatedItems.reduce(
                                           (sum, itm) => sum + itm.quantity * itm.rate,
                                           0,
@@ -2085,8 +1878,6 @@ export default function Dashboard() {
                                       const updatedItems = [...selectedBudget.items]
                                       const newRate = Number(e.target.value) || 0
                                       updatedItems[index] = { ...updatedItems[index], rate: newRate }
-
-                                      // Recalcular total del presupuesto
                                       const newTotal = updatedItems.reduce(
                                         (sum, itm) => sum + itm.quantity * itm.rate,
                                         0,
@@ -2128,7 +1919,6 @@ export default function Dashboard() {
                         </TableBody>
                       </Table>
 
-                      {/* Formulario para agregar nuevo ítem */}
                       {isEditingBudget && (
                         <div className="mt-4 p-4 border rounded-lg bg-gray-50">
                           <h4 className="font-semibold mb-3">Agregar Nuevo Ítem</h4>
