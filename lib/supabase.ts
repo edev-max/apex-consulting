@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "./supabase/client"
 
 // Configuración de Supabase con las credenciales correctas
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vdyjnolivynofgmdsmgs.supabase.co"
@@ -7,7 +7,7 @@ const supabaseAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkeWpub2xpdnlub2ZnbWRzbWdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc3MzkyNjMsImV4cCI6MjA1MzMxNTI2M30.PzWXHMFWfPVkFrzytvPKrhM9kXxQaWiurx_0JL0PlxI"
 
 // Crear cliente de Supabase
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient()
 
 // Función para verificar la conexión
 export const checkSupabaseConnection = () => {

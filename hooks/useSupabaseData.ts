@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "./useAuth"
 
 interface Budget {
@@ -14,6 +14,28 @@ interface Budget {
   date: string
   status: "pending" | "paid" | "overdue"
   items?: any[]
+}
+
+interface Invoice {
+  id: string
+  number: string
+  budget_id?: string
+  client_name: string
+  project_name: string
+  project_description?: string
+  total: number
+  date: string
+  status: "pending" | "paid" | "overdue"
+  items?: any[]
+}
+
+interface BudgetInvoiceItem {
+  id: string
+  budget_id: string
+  invoice_id: string
+  item_id: string
+  quantity_invoiced: number
+  amount: number
 }
 
 interface Client {
@@ -31,7 +53,7 @@ interface HourEntry {
   hours: number
   description: string
   project: string
-  paid: boolean // Agregar este campo
+  paid: boolean
 }
 
 interface HourQuote {
@@ -61,6 +83,7 @@ interface UserProfile {
 export const useSupabaseData = () => {
   const { user } = useAuth()
   const [budgets, setBudgets] = useState<Budget[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [hourEntries, setHourEntries] = useState<HourEntry[]>([])
   const [hourQuotes, setHourQuotes] = useState<HourQuote[]>([])
@@ -75,7 +98,17 @@ export const useSupabaseData = () => {
     if (!user) return false
 
     try {
-      const tables = ["budgets", "clients", "hour_entries", "hour_quotes", "company_settings", "user_profiles"]
+      const supabase = createClient()
+      const tables = [
+        "budgets",
+        "clients",
+        "hour_entries",
+        "hour_quotes",
+        "company_settings",
+        "user_profiles",
+        "invoices",
+        "budget_invoice_items",
+      ]
       const tableChecks = await Promise.all(
         tables.map(async (table) => {
           try {
@@ -132,6 +165,7 @@ export const useSupabaseData = () => {
     try {
       await Promise.all([
         loadBudgets(),
+        loadInvoices(),
         loadClients(),
         loadHourEntries(),
         loadHourQuotes(),
@@ -151,6 +185,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase
         .from("budgets")
         .select("*")
@@ -191,6 +226,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase
         .from("budgets")
         .insert({
@@ -222,6 +258,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase
         .from("budgets")
         .update({
@@ -250,6 +287,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("budgets").delete().eq("id", budgetId).eq("user_id", user.id)
 
       if (error) {
@@ -267,6 +305,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return 589
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase.rpc("get_next_budget_number", { user_uuid: user.id })
 
       if (error) {
@@ -286,6 +325,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase
         .from("clients")
         .select("*")
@@ -307,6 +347,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("clients").insert({
         name: clientData.name,
         email: clientData.email,
@@ -329,6 +370,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("clients").update(updates).eq("id", clientId).eq("user_id", user.id)
 
       if (error) {
@@ -346,6 +388,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("clients").delete().eq("id", clientId).eq("user_id", user.id)
 
       if (error) {
@@ -364,6 +407,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase
         .from("hour_entries")
         .select("*")
@@ -391,13 +435,14 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("hour_entries").insert({
         client_id: entryData.clientId,
         client_name: entryData.clientName,
         hours: entryData.hours,
         description: entryData.description,
         project: entryData.project,
-        paid: false, // Agregar este campo
+        paid: false,
         user_id: user.id,
       })
 
@@ -416,6 +461,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("hour_entries").delete().eq("id", entryId).eq("user_id", user.id)
 
       if (error) {
@@ -433,6 +479,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase
         .from("hour_entries")
         .update({ paid: true })
@@ -455,6 +502,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase
         .from("hour_quotes")
         .select("*")
@@ -482,6 +530,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("hour_quotes").insert({
         client_id: quoteData.clientId,
         client_name: quoteData.clientName,
@@ -506,6 +555,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("hour_quotes").update(updates).eq("id", quoteId).eq("user_id", user.id)
 
       if (error) {
@@ -523,6 +573,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.from("hour_quotes").delete().eq("id", quoteId).eq("user_id", user.id)
 
       if (error) {
@@ -541,6 +592,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase.from("company_settings").select("*").eq("user_id", user.id).single()
 
       if (error && error.code !== "PGRST116") {
@@ -558,6 +610,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
+      const supabase = createClient()
       const { data: existingSettings } = await supabase
         .from("company_settings")
         .select("*")
@@ -612,6 +665,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase.from("user_profiles").select("*").eq("user_id", user.id).single()
 
       if (error && error.code !== "PGRST116") {
@@ -629,6 +683,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
+      const supabase = createClient()
       const { data: existingProfile } = await supabase.from("user_profiles").select("*").eq("user_id", user.id).single()
 
       let data, error
@@ -678,6 +733,7 @@ export const useSupabaseData = () => {
     if (!user) return null
 
     try {
+      const supabase = createClient()
       const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
         cacheControl: "3600",
         upsert: true,
@@ -699,8 +755,221 @@ export const useSupabaseData = () => {
     }
   }
 
+  const loadInvoices = async () => {
+    if (!user || !tablesExist) return
+
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error loading invoices:", error)
+        return
+      }
+
+      setInvoices(
+        data.map((invoice) => ({
+          id: invoice.id,
+          number: invoice.number,
+          budget_id: invoice.budget_id,
+          client_name: invoice.client_name,
+          project_name: invoice.project_name,
+          project_description: invoice.project_description,
+          total: invoice.total,
+          date: invoice.date,
+          status: invoice.status,
+          items: invoice.items,
+        })),
+      )
+    } catch (error) {
+      console.error("Error loading invoices:", error)
+    }
+  }
+
+  const getNextInvoiceNumber = async () => {
+    if (!user || !tablesExist) return 1
+
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.rpc("get_next_invoice_number", { user_uuid: user.id })
+
+      if (error) {
+        console.error("Error getting next invoice number:", error)
+        return 1
+      }
+
+      return data || 1
+    } catch (error) {
+      console.error("Error getting next invoice number:", error)
+      return 1
+    }
+  }
+
+  const getBudgetInvoicedAmounts = async (budgetId: string) => {
+    if (!user || !tablesExist) return {}
+
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("budget_invoice_items")
+        .select("*")
+        .eq("budget_id", budgetId)
+        .eq("user_id", user.id)
+
+      if (error) {
+        console.error("Error loading budget invoice items:", error)
+        return {}
+      }
+
+      // Agrupar por item_id y sumar las cantidades facturadas
+      const invoicedAmounts: Record<string, number> = {}
+      data.forEach((item) => {
+        if (!invoicedAmounts[item.item_id]) {
+          invoicedAmounts[item.item_id] = 0
+        }
+        invoicedAmounts[item.item_id] += Number(item.quantity_invoiced)
+      })
+
+      return invoicedAmounts
+    } catch (error) {
+      console.error("Error loading budget invoice items:", error)
+      return {}
+    }
+  }
+
+  const createInvoiceFromBudget = async (
+    budgetId: string,
+    selectedItems: Array<{ itemId: string; quantity: number; amount: number }>,
+  ) => {
+    if (!user || !tablesExist) return null
+
+    try {
+      const supabase = createClient()
+
+      // Obtener el presupuesto original
+      const budget = budgets.find((b) => b.id === budgetId)
+      if (!budget) {
+        console.error("Budget not found")
+        return null
+      }
+
+      // Obtener el siguiente número de factura
+      const invoiceNumber = await getNextInvoiceNumber()
+
+      // Crear los ítems de la factura basados en los ítems seleccionados
+      const invoiceItems = selectedItems.map((selectedItem) => {
+        const budgetItem = budget.items?.find((item: any) => item.id === selectedItem.itemId)
+        return {
+          ...budgetItem,
+          quantity: selectedItem.quantity,
+        }
+      })
+
+      const invoiceTotal = selectedItems.reduce((sum, item) => sum + item.amount, 0)
+
+      // Crear la factura
+      const { data: invoice, error: invoiceError } = await supabase
+        .from("invoices")
+        .insert({
+          number: invoiceNumber.toString().padStart(4, "0"),
+          budget_id: budgetId,
+          client_name: budget.client_name,
+          project_name: budget.project_name,
+          project_description: budget.project_description,
+          total: invoiceTotal,
+          items: invoiceItems,
+          status: "pending",
+          user_id: user.id,
+        })
+        .select()
+        .single()
+
+      if (invoiceError) {
+        console.error("Error creating invoice:", invoiceError)
+        return null
+      }
+
+      // Registrar los ítems facturados
+      const budgetInvoiceItems = selectedItems.map((item) => ({
+        budget_id: budgetId,
+        invoice_id: invoice.id,
+        item_id: item.itemId,
+        quantity_invoiced: item.quantity,
+        amount: item.amount,
+        user_id: user.id,
+      }))
+
+      const { error: itemsError } = await supabase.from("budget_invoice_items").insert(budgetInvoiceItems)
+
+      if (itemsError) {
+        console.error("Error saving budget invoice items:", itemsError)
+        // Intentar eliminar la factura si falla el registro de ítems
+        await supabase.from("invoices").delete().eq("id", invoice.id)
+        return null
+      }
+
+      await loadInvoices()
+      return invoice
+    } catch (error) {
+      console.error("Error creating invoice from budget:", error)
+      return null
+    }
+  }
+
+  const updateInvoice = async (invoiceId: string, updates: Partial<Invoice>) => {
+    if (!user || !tablesExist) return
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("invoices")
+        .update({
+          client_name: updates.client_name,
+          project_name: updates.project_name,
+          project_description: updates.project_description,
+          total: updates.total,
+          status: updates.status,
+          items: updates.items,
+        })
+        .eq("id", invoiceId)
+        .eq("user_id", user.id)
+
+      if (error) {
+        console.error("Error updating invoice:", error)
+        return
+      }
+
+      await loadInvoices()
+    } catch (error) {
+      console.error("Error updating invoice:", error)
+    }
+  }
+
+  const deleteInvoice = async (invoiceId: string) => {
+    if (!user || !tablesExist) return
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from("invoices").delete().eq("id", invoiceId).eq("user_id", user.id)
+
+      if (error) {
+        console.error("Error deleting invoice:", error)
+        return
+      }
+
+      await loadInvoices()
+    } catch (error) {
+      console.error("Error deleting invoice:", error)
+    }
+  }
+
   return {
     budgets,
+    invoices,
     clients,
     hourEntries,
     hourQuotes,
@@ -713,12 +982,18 @@ export const useSupabaseData = () => {
     updateBudget,
     deleteBudget,
     getNextBudgetNumber,
+    loadInvoices,
+    getNextInvoiceNumber,
+    getBudgetInvoicedAmounts,
+    createInvoiceFromBudget,
+    updateInvoice,
+    deleteInvoice,
     saveClient,
     updateClient,
     deleteClient,
     saveHourEntry,
     deleteHourEntry,
-    markHourEntryAsPaid, // Agregar esta línea
+    markHourEntryAsPaid,
     saveHourQuote,
     updateHourQuote,
     deleteHourQuote,
