@@ -1064,7 +1064,15 @@ export default function Dashboard() {
       case "budgets":
         return (
           <div className="space-y-4">
-            <DebtReport budgets={budgets} invoices={invoices} />
+            {/* Tab: Presupuestos - Reporte de Deudas */}
+            {activeTab === "budgets" && (
+              <DebtReport
+                budgets={budgets}
+                invoices={invoices}
+                companyName={companySettings?.company_name || "Mi Empresa"}
+                companyLogo={companySettings?.company_logo_url || undefined}
+              />
+            )}
 
             <div className="flex gap-2 mb-4">
               <Button
