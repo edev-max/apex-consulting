@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { getClient } from "@/lib/supabase/client"
 import { useAuth } from "./useAuth"
 
 interface Budget {
@@ -98,7 +98,7 @@ export const useSupabaseData = () => {
     if (!user) return false
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const tables = [
         "budgets",
         "clients",
@@ -185,7 +185,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase
         .from("budgets")
         .select("*")
@@ -226,7 +226,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase
         .from("budgets")
         .insert({
@@ -258,7 +258,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase
         .from("budgets")
         .update({
@@ -287,7 +287,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("budgets").delete().eq("id", budgetId).eq("user_id", user.id)
 
       if (error) {
@@ -305,7 +305,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return 589
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase.rpc("get_next_budget_number", { user_uuid: user.id })
 
       if (error) {
@@ -325,7 +325,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase
         .from("clients")
         .select("*")
@@ -347,7 +347,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("clients").insert({
         name: clientData.name,
         email: clientData.email,
@@ -370,7 +370,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("clients").update(updates).eq("id", clientId).eq("user_id", user.id)
 
       if (error) {
@@ -388,7 +388,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("clients").delete().eq("id", clientId).eq("user_id", user.id)
 
       if (error) {
@@ -407,7 +407,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase
         .from("hour_entries")
         .select("*")
@@ -435,7 +435,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("hour_entries").insert({
         client_id: entryData.clientId,
         client_name: entryData.clientName,
@@ -461,7 +461,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("hour_entries").delete().eq("id", entryId).eq("user_id", user.id)
 
       if (error) {
@@ -479,7 +479,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase
         .from("hour_entries")
         .update({ paid: true })
@@ -502,7 +502,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase
         .from("hour_quotes")
         .select("*")
@@ -530,7 +530,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("hour_quotes").insert({
         client_id: quoteData.clientId,
         client_name: quoteData.clientName,
@@ -555,7 +555,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("hour_quotes").update(updates).eq("id", quoteId).eq("user_id", user.id)
 
       if (error) {
@@ -573,7 +573,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("hour_quotes").delete().eq("id", quoteId).eq("user_id", user.id)
 
       if (error) {
@@ -592,7 +592,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase.from("company_settings").select("*").eq("user_id", user.id).single()
 
       if (error && error.code !== "PGRST116") {
@@ -610,7 +610,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data: existingSettings } = await supabase
         .from("company_settings")
         .select("*")
@@ -665,7 +665,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase.from("user_profiles").select("*").eq("user_id", user.id).single()
 
       if (error && error.code !== "PGRST116") {
@@ -683,7 +683,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data: existingProfile } = await supabase.from("user_profiles").select("*").eq("user_id", user.id).single()
 
       let data, error
@@ -733,7 +733,7 @@ export const useSupabaseData = () => {
     if (!user) return null
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
         cacheControl: "3600",
         upsert: true,
@@ -759,7 +759,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase
         .from("invoices")
         .select("*")
@@ -794,7 +794,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return 1
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase.rpc("get_next_invoice_number", { user_uuid: user.id })
 
       if (error) {
@@ -813,7 +813,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return {}
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { data, error } = await supabase
         .from("budget_invoice_items")
         .select("*")
@@ -848,7 +848,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return null
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
 
       // Obtener el presupuesto original
       const budget = budgets.find((b) => b.id === budgetId)
@@ -924,7 +924,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase
         .from("invoices")
         .update({
@@ -953,7 +953,7 @@ export const useSupabaseData = () => {
     if (!user || !tablesExist) return
 
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.from("invoices").delete().eq("id", invoiceId).eq("user_id", user.id)
 
       if (error) {

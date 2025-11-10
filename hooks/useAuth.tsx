@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, createContext, useContext } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useState, useEffect, createContext, useContext, useRef } from "react"
+import { getClient } from "@/lib/supabase/client"
 import type { User, Session } from "@supabase/supabase-js"
 
 interface AuthContextType {
@@ -33,11 +33,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
+  const isInitializedRef = useRef(false)
+
   useEffect(() => {
+    if (isInitializedRef.current) {
+      return
+    }
+    isInitializedRef.current = true
+
     let supabase
     try {
-      supabase = createClient()
-      console.log("[v0] Supabase client created successfully")
+      supabase = getClient()
     } catch (err) {
       console.error("[v0] Failed to create Supabase client:", err)
       setError(err instanceof Error ? err.message : "Failed to initialize Supabase client")
@@ -49,10 +56,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .getSession()
       .then(({ data: { session }, error }) => {
         if (error) {
-          console.error("[v0] Error getting session:", error)
           setError(`Error de conexión: ${error.message}`)
         } else {
-          console.log("[v0] Session retrieved:", session ? "Active session" : "No session")
           setSession(session)
           setUser(session?.user ?? null)
         }
@@ -64,33 +69,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false)
       })
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("[v0] Auth state changed:", _event, session ? "Has session" : "No session")
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    if (!subscriptionRef.current) {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (loading) {
+          setLoading(false)
+        }
+      })
 
-    return () => subscription.unsubscribe()
-  }, [])
+      subscriptionRef.current = subscription
+    }
+
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe()
+        subscriptionRef.current = null
+      }
+      isInitializedRef.current = false
+    }
+  }, []) // Empty dependency array to run only once
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log("[v0] Attempting sign in for:", email)
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-
-      if (error) {
-        console.error("[v0] Sign in error:", error)
-      } else {
-        console.log("[v0] Sign in successful")
-      }
-
       return { error }
     } catch (err) {
       console.error("[v0] Sign in exception:", err)
@@ -100,7 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -114,7 +122,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       setLoading(true)
-      const supabase = createClient()
+      const supabase = getClient()
       await supabase.auth.signOut()
       setUser(null)
       setSession(null)
@@ -129,7 +137,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updatePassword = async (newPassword: string) => {
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
       })
@@ -141,7 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updateEmail = async (newEmail: string) => {
     try {
-      const supabase = createClient()
+      const supabase = getClient()
       const { error } = await supabase.auth.updateUser({
         email: newEmail,
       })
