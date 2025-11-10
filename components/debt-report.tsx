@@ -74,7 +74,7 @@ interface DebtReportProps {
   companyLogo?: string
 }
 
-export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", companyLogo }: DebtReportProps) {
+export function DebtReport({ budgets, invoices, companyName = "APEX CONSULTING", companyLogo }: DebtReportProps) {
   const [selectedClient, setSelectedClient] = useState<string | null>(null)
 
   const calculateClientDebts = (): ClientDebt[] => {
@@ -211,7 +211,6 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
     let content = ""
 
     if (client) {
-      // PDF for individual client - only showing pending debts
       content = `
         <div class="client-info">
           <h2>${client.clientName}</h2>
@@ -277,12 +276,29 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
               })
               .join("")}
           </tbody>
+          <tfoot>
+            <tr style="background-color: #f3f4f6; font-weight: bold; border-top: 3px solid #3b82f6;">
+              <td colspan="3" style="text-align: right; padding: 14px 12px;">TOTALES:</td>
+              <td style="text-align: right; color: #1e40af; font-size: 15px;">$${client.totalBudgets.toLocaleString()}</td>
+              <td style="text-align: right; color: #10b981; font-size: 15px;">$${client.totalPaid.toLocaleString()}</td>
+              <td style="text-align: right; color: ${client.pendingDebt > 0 ? "#f97316" : "#10b981"}; font-size: 15px;">$${client.pendingDebt.toLocaleString()}</td>
+              <td></td>
+            </tr>
+          </tfoot>
         </table>
 
         <h3 style="margin-top: 30px; margin-bottom: 15px; color: #374151;">Facturas Emitidas (${client.invoiceCount})</h3>
         ${
           client.invoiceCount > 0
-            ? `
+            ? (
+                () => {
+                  const invoiceTotals = {
+                    total: client.invoices.reduce((sum, inv) => sum + Number(inv.total), 0),
+                    paid: client.invoices.reduce((sum, inv) => sum + Number(inv.paid_amount || 0), 0),
+                  }
+                  invoiceTotals.pending = invoiceTotals.total - invoiceTotals.paid
+
+                  return `
         <table>
           <thead>
             <tr>
@@ -324,13 +340,23 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
               })
               .join("")}
           </tbody>
+          <tfoot>
+            <tr style="background-color: #f3f4f6; font-weight: bold; border-top: 3px solid #3b82f6;">
+              <td colspan="2" style="text-align: right; padding: 14px 12px;">TOTALES:</td>
+              <td style="text-align: right; color: #1e40af; font-size: 15px;">$${invoiceTotals.total.toLocaleString()}</td>
+              <td style="text-align: right; color: #10b981; font-size: 15px;">$${invoiceTotals.paid.toLocaleString()}</td>
+              <td style="text-align: right; color: ${invoiceTotals.pending > 0 ? "#f97316" : "#10b981"}; font-size: 15px;">$${invoiceTotals.pending.toLocaleString()}</td>
+              <td></td>
+            </tr>
+          </tfoot>
         </table>
         `
+                }
+              )()
             : '<p style="text-align: center; color: #6b7280; padding: 20px;">No hay facturas emitidas</p>'
         }
       `
     } else {
-      // PDF for all clients summary
       content = `
         <div class="summary">
           <div class="summary-item">
@@ -389,6 +415,17 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
               )
               .join("")}
           </tbody>
+          <tfoot>
+            <tr style="background-color: #f3f4f6; font-weight: bold; border-top: 3px solid #3b82f6;">
+              <td style="text-align: right; padding: 14px 12px;">TOTALES GENERALES:</td>
+              <td style="text-align: right; color: #1e40af; font-size: 16px;">$${totalBudgeted.toLocaleString()}</td>
+              <td style="text-align: right; color: #10b981; font-size: 16px;">$${totalPaid.toLocaleString()}</td>
+              <td style="text-align: right; color: #f97316; font-size: 16px;">$${totalPendingDebt.toLocaleString()}</td>
+              <td colspan="2" style="text-align: center; color: #6b7280; font-size: 14px;">
+                ${clientDebts.reduce((sum, c) => sum + c.budgetCount, 0)} P / ${clientDebts.reduce((sum, c) => sum + c.invoiceCount, 0)} F
+              </td>
+            </tr>
+          </tfoot>
         </table>
       `
     }
@@ -518,6 +555,13 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
     tr:hover td {
       background: #f9fafb;
     }
+    tfoot td {
+      background: #f3f4f6 !important;
+      border-top: 3px solid #3b82f6;
+      padding: 14px 12px;
+      font-weight: bold;
+      font-size: 14px;
+    }
     
     .footer { 
       text-align: center; 
@@ -566,6 +610,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
       .summary-item { break-inside: avoid; }
       table { page-break-inside: auto; }
       tr { page-break-inside: avoid; page-break-after: auto; }
+      tfoot { break-inside: avoid; }
       @page {
         size: landscape;
         margin: 15mm;
