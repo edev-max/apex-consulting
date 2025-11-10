@@ -33,27 +33,30 @@ interface DashboardCardsProps {
 }
 
 export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: DashboardCardsProps) {
-  // Calcular métricas
   const totalRevenue = budgets.reduce((sum, budget) => sum + budget.total, 0)
-  const paidBudgets = budgets.filter((b) => b.status === "paid")
-  const pendingBudgets = budgets.filter((b) => b.status === "pending")
-  const totalPaidRevenue = paidBudgets.reduce((sum, budget) => sum + budget.total, 0)
-  const totalPendingRevenue = pendingBudgets.reduce((sum, budget) => sum + budget.total, 0)
+  const totalPaidRevenue = budgets.reduce((sum, budget) => sum + (budget.paid_amount || 0), 0)
+  const totalPendingRevenue = totalRevenue - totalPaidRevenue
+
+  const paidBudgets = budgets.filter((b) => b.payment_status === "paid" || b.paid_amount >= b.total)
+  const pendingBudgets = budgets.filter((b) => (b.paid_amount || 0) < b.total)
 
   const consumedHours = clients.reduce((sum, client) => sum + client.consumed_hours, 0)
 
   const pendingQuotes = hourQuotes.filter((q) => q.status === "pending")
   const approvedQuotes = hourQuotes.filter((q) => q.status === "approved")
 
-  // Datos para gráficos
   const budgetStatusData = [
     { name: "Pagados", value: paidBudgets.length, color: "#10b981" },
-    { name: "Pendientes", value: pendingBudgets.length, color: "#f59e0b" },
-    { name: "Vencidos", value: budgets.filter((b) => b.status === "overdue").length, color: "#ef4444" },
+    {
+      name: "Pendientes",
+      value: budgets.filter((b) => (b.paid_amount || 0) > 0 && (b.paid_amount || 0) < b.total).length,
+      color: "#f59e0b",
+    },
+    { name: "Sin pagar", value: budgets.filter((b) => (b.paid_amount || 0) === 0).length, color: "#ef4444" },
   ]
 
   const revenueData = [
-    { name: "Ingresos Confirmados", amount: totalPaidRevenue },
+    { name: "Ingresos Pagados", amount: totalPaidRevenue },
     { name: "Ingresos Pendientes", amount: totalPendingRevenue },
   ]
 
@@ -82,7 +85,7 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
             <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-green-600 flex items-center">
-                <TrendingUpIcon className="h-3 w-3 mr-1" />${totalPaidRevenue.toLocaleString()} confirmados
+                <TrendingUpIcon className="h-3 w-3 mr-1" />${totalPaidRevenue.toLocaleString()} pagados
               </span>
             </p>
           </CardContent>
@@ -162,11 +165,10 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
           </CardContent>
         </Card>
 
-        {/* Gráfico de ingresos */}
         <Card>
           <CardHeader>
             <CardTitle>Análisis de Ingresos</CardTitle>
-            <CardDescription>Ingresos confirmados vs pendientes</CardDescription>
+            <CardDescription>Ingresos pagados vs pendientes de pago</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>

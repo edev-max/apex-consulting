@@ -15,6 +15,7 @@ import {
   BarChart3,
   Printer,
   ArrowLeft,
+  CheckCircleIcon,
 } from "lucide-react"
 import {
   BarChart,
@@ -36,6 +37,8 @@ interface Budget {
   client_name: string
   project_name: string
   total: number
+  paid_amount?: number
+  payment_status?: "unpaid" | "partial" | "paid"
   date: string
   status: "pending" | "paid" | "overdue"
   items?: any[]
@@ -47,6 +50,8 @@ interface Invoice {
   budget_id?: string
   client_name: string
   total: number
+  paid_amount?: number
+  payment_status?: "unpaid" | "partial" | "paid"
   date: string
   status: "pending" | "paid" | "overdue"
 }
@@ -54,7 +59,7 @@ interface Invoice {
 interface ClientDebt {
   clientName: string
   totalBudgets: number
-  totalInvoiced: number
+  totalPaid: number
   pendingDebt: number
   budgetCount: number
   invoiceCount: number
@@ -72,7 +77,6 @@ interface DebtReportProps {
 export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", companyLogo }: DebtReportProps) {
   const [selectedClient, setSelectedClient] = useState<string | null>(null)
 
-  // Calcular deudas por cliente
   const calculateClientDebts = (): ClientDebt[] => {
     const clientMap = new Map<string, ClientDebt>()
 
@@ -81,7 +85,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
       const existing = clientMap.get(budget.client_name) || {
         clientName: budget.client_name,
         totalBudgets: 0,
-        totalInvoiced: 0,
+        totalPaid: 0,
         pendingDebt: 0,
         budgetCount: 0,
         invoiceCount: 0,
@@ -89,17 +93,18 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
         invoices: [],
       }
 
+      const paidAmount = Number(budget.paid_amount || 0)
       existing.totalBudgets += Number(budget.total)
+      existing.totalPaid += paidAmount
       existing.budgetCount += 1
       existing.budgets.push(budget)
       clientMap.set(budget.client_name, existing)
     })
 
-    // Procesar facturas
+    // Contar facturas por cliente
     invoices.forEach((invoice) => {
       const existing = clientMap.get(invoice.client_name)
       if (existing) {
-        existing.totalInvoiced += Number(invoice.total)
         existing.invoiceCount += 1
         existing.invoices.push(invoice)
       }
@@ -107,59 +112,74 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
 
     // Calcular deuda pendiente
     clientMap.forEach((client) => {
-      client.pendingDebt = client.totalBudgets - client.totalInvoiced
+      client.pendingDebt = client.totalBudgets - client.totalPaid
     })
 
     return Array.from(clientMap.values()).sort((a, b) => b.pendingDebt - a.pendingDebt)
   }
 
   const clientDebts = calculateClientDebts()
-  const selectedClientData = selectedClient ? clientDebts.find((c) => c.clientName === selectedClient) : null
+
+  const selectedClientData = selectedClient
+    ? (() => {
+        const client = clientDebts.find((c) => c.clientName === selectedClient)
+        if (!client) return null
+
+        // Filtrar solo presupuestos con saldo pendiente
+        const budgetsWithDebt = client.budgets.filter((budget) => {
+          const paidAmount = Number(budget.paid_amount || 0)
+          const totalAmount = Number(budget.total)
+          return paidAmount < totalAmount
+        })
+
+        return {
+          ...client,
+          budgets: budgetsWithDebt,
+          budgetCount: budgetsWithDebt.length,
+          totalBudgets: budgetsWithDebt.reduce((sum, b) => sum + Number(b.total), 0),
+          totalPaid: budgetsWithDebt.reduce((sum, b) => sum + Number(b.paid_amount || 0), 0),
+          pendingDebt: budgetsWithDebt.reduce((sum, b) => sum + (Number(b.total) - Number(b.paid_amount || 0)), 0),
+        }
+      })()
+    : null
 
   const totalPendingDebt = clientDebts.reduce((sum, client) => sum + client.pendingDebt, 0)
   const totalBudgeted = clientDebts.reduce((sum, c) => sum + c.totalBudgets, 0)
-  const totalInvoiced = clientDebts.reduce((sum, c) => sum + c.totalInvoiced, 0)
-  const collectionRate = totalBudgeted > 0 ? ((totalInvoiced / totalBudgeted) * 100).toFixed(1) : "0"
+  const totalPaid = clientDebts.reduce((sum, c) => sum + c.totalPaid, 0)
+  const collectionRate = totalBudgeted > 0 ? ((totalPaid / totalBudgeted) * 100).toFixed(1) : "0"
 
   const topDebtors = clientDebts.slice(0, 10)
   const chartData = topDebtors.map((client) => ({
     name: client.clientName.length > 15 ? client.clientName.substring(0, 15) + "..." : client.clientName,
     Presupuestado: client.totalBudgets,
-    Facturado: client.totalInvoiced,
+    Pagado: client.totalPaid,
     Pendiente: client.pendingDebt,
   }))
 
   const statusDistribution = [
     {
-      name: "Al día",
+      name: "Pagado",
       value: clientDebts.filter((c) => c.pendingDebt === 0).length,
       color: "#10b981",
     },
     {
-      name: "Sin facturar",
-      value: clientDebts.filter((c) => c.pendingDebt === c.totalBudgets && c.totalBudgets > 0).length,
+      name: "Sin pagar",
+      value: clientDebts.filter((c) => c.totalPaid === 0 && c.totalBudgets > 0).length,
       color: "#ef4444",
     },
     {
       name: "Parcial",
-      value: clientDebts.filter((c) => c.pendingDebt > 0 && c.pendingDebt < c.totalBudgets).length,
+      value: clientDebts.filter((c) => c.pendingDebt > 0 && c.totalPaid > 0).length,
       color: "#f97316",
     },
   ].filter((item) => item.value > 0)
 
   const exportToCSV = () => {
-    const headers = [
-      "Cliente",
-      "Total Presupuestos",
-      "Total Facturado",
-      "Deuda Pendiente",
-      "# Presupuestos",
-      "# Facturas",
-    ]
+    const headers = ["Cliente", "Total Presupuestos", "Total Pagado", "Deuda Pendiente", "# Presupuestos", "# Facturas"]
     const rows = clientDebts.map((client) => [
       client.clientName,
       client.totalBudgets.toFixed(2),
-      client.totalInvoiced.toFixed(2),
+      client.totalPaid.toFixed(2),
       client.pendingDebt.toFixed(2),
       client.budgetCount.toString(),
       client.invoiceCount.toString(),
@@ -191,11 +211,11 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
     let content = ""
 
     if (client) {
-      // PDF for individual client
+      // PDF for individual client - only showing pending debts
       content = `
         <div class="client-info">
           <h2>${client.clientName}</h2>
-          <p>Reporte generado el ${currentDate}</p>
+          <p>Reporte de Deudas Pendientes - Generado el ${currentDate}</p>
         </div>
 
         <div class="summary">
@@ -204,8 +224,8 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
             <div class="summary-value">$${client.totalBudgets.toLocaleString()}</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">Total Facturado</div>
-            <div class="summary-value" style="color: #10b981;">$${client.totalInvoiced.toLocaleString()}</div>
+            <div class="summary-label">Total Pagado</div>
+            <div class="summary-value" style="color: #10b981;">$${client.totalPaid.toLocaleString()}</div>
           </div>
           <div class="summary-item">
             <div class="summary-label">Deuda Pendiente</div>
@@ -213,45 +233,53 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
           </div>
         </div>
 
-        <h3 style="margin-top: 30px; margin-bottom: 15px; color: #374151;">Presupuestos (${client.budgetCount})</h3>
+        <h3 style="margin-top: 30px; margin-bottom: 15px; color: #374151;">Presupuestos con Saldo Pendiente (${client.budgetCount})</h3>
         <table>
           <thead>
             <tr>
               <th>Número</th>
               <th>Proyecto</th>
               <th>Fecha</th>
-              <th style="text-align: right;">Monto</th>
+              <th style="text-align: right;">Total</th>
+              <th style="text-align: right;">Pagado</th>
+              <th style="text-align: right;">Pendiente</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody>
             ${client.budgets
-              .map(
-                (budget) => `
+              .map((budget) => {
+                const paidAmount = Number(budget.paid_amount || 0)
+                const totalAmount = Number(budget.total)
+                const pendingAmount = totalAmount - paidAmount
+
+                return `
               <tr>
                 <td>#${budget.number}</td>
                 <td>${budget.project_name}</td>
                 <td>${new Date(budget.date).toLocaleDateString("es-ES")}</td>
-                <td style="text-align: right;">$${Number(budget.total).toLocaleString()}</td>
+                <td style="text-align: right;">$${totalAmount.toLocaleString()}</td>
+                <td style="text-align: right; color: #10b981;">$${paidAmount.toLocaleString()}</td>
+                <td style="text-align: right; color: #f97316; font-weight: 600;">$${pendingAmount.toLocaleString()}</td>
                 <td>
                   <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; ${
-                    budget.status === "paid"
+                    paidAmount >= totalAmount
                       ? "background-color: #d1fae5; color: #065f46;"
-                      : budget.status === "pending"
-                        ? "background-color: #fef3c7; color: #92400e;"
+                      : paidAmount > 0
+                        ? "background-color: #fed7aa; color: #9a3412;"
                         : "background-color: #fee2e2; color: #991b1b;"
                   }">
-                    ${budget.status === "paid" ? "Pagado" : budget.status === "pending" ? "Pendiente" : "Vencido"}
+                    ${paidAmount >= totalAmount ? "Pagado" : paidAmount > 0 ? "Parcial" : "Sin pagar"}
                   </span>
                 </td>
               </tr>
-            `,
-              )
+            `
+              })
               .join("")}
           </tbody>
         </table>
 
-        <h3 style="margin-top: 30px; margin-bottom: 15px; color: #374151;">Facturas (${client.invoiceCount})</h3>
+        <h3 style="margin-top: 30px; margin-bottom: 15px; color: #374151;">Facturas Emitidas (${client.invoiceCount})</h3>
         ${
           client.invoiceCount > 0
             ? `
@@ -260,32 +288,40 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
             <tr>
               <th>Número</th>
               <th>Fecha</th>
-              <th style="text-align: right;">Monto</th>
+              <th style="text-align: right;">Total</th>
+              <th style="text-align: right;">Pagado</th>
+              <th style="text-align: right;">Pendiente</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody>
             ${client.invoices
-              .map(
-                (invoice) => `
+              .map((invoice) => {
+                const paidAmount = Number(invoice.paid_amount || 0)
+                const totalAmount = Number(invoice.total)
+                const pendingAmount = totalAmount - paidAmount
+
+                return `
               <tr>
                 <td>#${invoice.number}</td>
                 <td>${new Date(invoice.date).toLocaleDateString("es-ES")}</td>
-                <td style="text-align: right;">$${Number(invoice.total).toLocaleString()}</td>
+                <td style="text-align: right;">$${totalAmount.toLocaleString()}</td>
+                <td style="text-align: right; color: #10b981;">$${paidAmount.toLocaleString()}</td>
+                <td style="text-align: right; color: ${pendingAmount > 0 ? "#f97316" : "#10b981"};">$${pendingAmount.toLocaleString()}</td>
                 <td>
                   <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; ${
-                    invoice.status === "paid"
+                    paidAmount >= totalAmount
                       ? "background-color: #d1fae5; color: #065f46;"
-                      : invoice.status === "pending"
-                        ? "background-color: #fef3c7; color: #92400e;"
+                      : paidAmount > 0
+                        ? "background-color: #fed7aa; color: #9a3412;"
                         : "background-color: #fee2e2; color: #991b1b;"
                   }">
-                    ${invoice.status === "paid" ? "Pagado" : invoice.status === "pending" ? "Pendiente" : "Vencido"}
+                    ${paidAmount >= totalAmount ? "Pagado" : paidAmount > 0 ? "Parcial" : "Sin pagar"}
                   </span>
                 </td>
               </tr>
-            `,
-              )
+            `
+              })
               .join("")}
           </tbody>
         </table>
@@ -302,8 +338,8 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
             <div class="summary-value">$${totalBudgeted.toLocaleString()}</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">Total Facturado</div>
-            <div class="summary-value" style="color: #10b981;">$${totalInvoiced.toLocaleString()}</div>
+            <div class="summary-label">Total Pagado</div>
+            <div class="summary-value" style="color: #10b981;">$${totalPaid.toLocaleString()}</div>
           </div>
           <div class="summary-item">
             <div class="summary-label">Deuda Pendiente</div>
@@ -321,7 +357,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
             <tr>
               <th>Cliente</th>
               <th style="text-align: right;">Presupuestado</th>
-              <th style="text-align: right;">Facturado</th>
+              <th style="text-align: right;">Pagado</th>
               <th style="text-align: right;">Pendiente</th>
               <th style="text-align: center;">Docs</th>
               <th style="text-align: center;">Estado</th>
@@ -334,18 +370,18 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
               <tr>
                 <td>${client.clientName}</td>
                 <td style="text-align: right;">$${client.totalBudgets.toLocaleString()}</td>
-                <td style="text-align: right; color: #10b981;">$${client.totalInvoiced.toLocaleString()}</td>
+                <td style="text-align: right; color: #10b981;">$${client.totalPaid.toLocaleString()}</td>
                 <td style="text-align: right; font-weight: 600; color: ${client.pendingDebt > 0 ? "#f97316" : "#10b981"};">$${client.pendingDebt.toLocaleString()}</td>
                 <td style="text-align: center;">${client.budgetCount} P / ${client.invoiceCount} F</td>
                 <td style="text-align: center;">
                   <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; ${
                     client.pendingDebt === 0
                       ? "background-color: #d1fae5; color: #065f46;"
-                      : client.pendingDebt === client.totalBudgets
+                      : client.totalPaid === 0
                         ? "background-color: #fee2e2; color: #991b1b;"
                         : "background-color: #fed7aa; color: #9a3412;"
                   }">
-                    ${client.pendingDebt === 0 ? "Al día" : client.pendingDebt === client.totalBudgets ? "Sin facturar" : "Parcial"}
+                    ${client.pendingDebt === 0 ? "Pagado" : client.totalPaid === 0 ? "Sin pagar" : "Parcial"}
                   </span>
                 </td>
               </tr>
@@ -544,7 +580,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
         ${companyLogo ? `<img src="${companyLogo}" alt="Logo" class="company-logo" />` : ""}
         <div class="company-info">
           <h1>${companyName}</h1>
-          <p class="tagline">Reporte de Deudas y Cobranza</p>
+          <p class="tagline">Reporte de Deudas Pendientes</p>
         </div>
       </div>
       <div class="header-right">
@@ -613,7 +649,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
         <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white">
           <CardHeader>
             <CardTitle className="text-3xl text-blue-900">{selectedClientData.clientName}</CardTitle>
-            <CardDescription>Reporte detallado de presupuestos y facturas</CardDescription>
+            <CardDescription>Presupuestos con saldo pendiente de pago</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -622,14 +658,16 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
                 <div className="text-2xl font-bold text-blue-600">
                   ${selectedClientData.totalBudgets.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">{selectedClientData.budgetCount} presupuestos</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {selectedClientData.budgetCount} presupuestos pendientes
+                </div>
               </div>
               <div className="bg-white rounded-lg p-4 border-l-4 border-l-green-500 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Total Facturado</div>
+                <div className="text-sm text-gray-600 mb-1">Total Pagado</div>
                 <div className="text-2xl font-bold text-green-600">
-                  ${selectedClientData.totalInvoiced.toLocaleString()}
+                  ${selectedClientData.totalPaid.toLocaleString()}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">{selectedClientData.invoiceCount} facturas</div>
+                <div className="text-xs text-gray-500 mt-1">Pagos recibidos</div>
               </div>
               <div className="bg-white rounded-lg p-4 border-l-4 border-l-orange-500 shadow-sm">
                 <div className="text-sm text-gray-600 mb-1">Deuda Pendiente</div>
@@ -639,111 +677,143 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
                   ${selectedClientData.pendingDebt.toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {selectedClientData.pendingDebt === 0
-                    ? "Al día"
-                    : selectedClientData.pendingDebt === selectedClientData.totalBudgets
-                      ? "Sin facturar"
-                      : "Parcialmente facturado"}
+                  {selectedClientData.pendingDebt === 0 ? "Todo pagado" : "Por cobrar"}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Presupuestos ({selectedClientData.budgetCount})
-            </CardTitle>
-            <CardDescription>Lista completa de presupuestos emitidos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold">Número</TableHead>
-                    <TableHead className="font-semibold">Proyecto</TableHead>
-                    <TableHead className="font-semibold">Fecha</TableHead>
-                    <TableHead className="text-right font-semibold">Monto</TableHead>
-                    <TableHead className="text-center font-semibold">Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedClientData.budgets.map((budget) => (
-                    <TableRow key={budget.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-medium">#{budget.number}</TableCell>
-                      <TableCell>{budget.project_name}</TableCell>
-                      <TableCell>{new Date(budget.date).toLocaleDateString("es-ES")}</TableCell>
-                      <TableCell className="text-right font-mono">${Number(budget.total).toLocaleString()}</TableCell>
-                      <TableCell className="text-center">
-                        {budget.status === "paid" ? (
-                          <Badge className="bg-green-500 hover:bg-green-600">Pagado</Badge>
-                        ) : budget.status === "pending" ? (
-                          <Badge className="bg-yellow-500 hover:bg-yellow-600">Pendiente</Badge>
-                        ) : (
-                          <Badge variant="destructive">Vencido</Badge>
-                        )}
-                      </TableCell>
+        {selectedClientData.budgetCount > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Presupuestos con Saldo Pendiente ({selectedClientData.budgetCount})
+              </CardTitle>
+              <CardDescription>Solo presupuestos que aún tienen montos por cobrar</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Número</TableHead>
+                      <TableHead className="font-semibold">Proyecto</TableHead>
+                      <TableHead className="font-semibold">Fecha</TableHead>
+                      <TableHead className="text-right font-semibold">Total</TableHead>
+                      <TableHead className="text-right font-semibold">Pagado</TableHead>
+                      <TableHead className="text-right font-semibold">Pendiente</TableHead>
+                      <TableHead className="text-center font-semibold">Estado</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedClientData.budgets.map((budget) => {
+                      const paidAmount = Number(budget.paid_amount || 0)
+                      const totalAmount = Number(budget.total)
+                      const pendingAmount = totalAmount - paidAmount
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Facturas ({selectedClientData.invoiceCount})
-            </CardTitle>
-            <CardDescription>Lista completa de facturas emitidas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {selectedClientData.invoiceCount > 0 ? (
+                      return (
+                        <TableRow key={budget.id} className="hover:bg-muted/50 transition-colors">
+                          <TableCell className="font-medium">#{budget.number}</TableCell>
+                          <TableCell>{budget.project_name}</TableCell>
+                          <TableCell>{new Date(budget.date).toLocaleDateString("es-ES")}</TableCell>
+                          <TableCell className="text-right font-mono">${totalAmount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-mono text-green-600">
+                            ${paidAmount.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-orange-600 font-semibold">
+                            ${pendingAmount.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {paidAmount >= totalAmount ? (
+                              <Badge className="bg-green-500 hover:bg-green-600">Pagado</Badge>
+                            ) : paidAmount > 0 ? (
+                              <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Parcial</Badge>
+                            ) : (
+                              <Badge variant="destructive">Sin pagar</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="text-center py-12">
+              <CheckCircleIcon className="h-16 w-16 mx-auto mb-4 text-green-500" />
+              <h3 className="text-xl font-semibold text-green-600 mb-2">¡Todo al día!</h3>
+              <p className="text-muted-foreground">
+                Este cliente no tiene presupuestos pendientes de pago. Todos sus presupuestos han sido pagados en su
+                totalidad.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedClientData.invoiceCount > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Facturas Emitidas ({selectedClientData.invoiceCount})
+              </CardTitle>
+              <CardDescription>Lista completa de facturas</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="font-semibold">Número</TableHead>
                       <TableHead className="font-semibold">Fecha</TableHead>
-                      <TableHead className="text-right font-semibold">Monto</TableHead>
+                      <TableHead className="text-right font-semibold">Total</TableHead>
+                      <TableHead className="text-right font-semibold">Pagado</TableHead>
+                      <TableHead className="text-right font-semibold">Pendiente</TableHead>
                       <TableHead className="text-center font-semibold">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedClientData.invoices.map((invoice) => (
-                      <TableRow key={invoice.id} className="hover:bg-muted/50 transition-colors">
-                        <TableCell className="font-medium">#{invoice.number}</TableCell>
-                        <TableCell>{new Date(invoice.date).toLocaleDateString("es-ES")}</TableCell>
-                        <TableCell className="text-right font-mono text-green-600">
-                          ${Number(invoice.total).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {invoice.status === "paid" ? (
-                            <Badge className="bg-green-500 hover:bg-green-600">Pagado</Badge>
-                          ) : invoice.status === "pending" ? (
-                            <Badge className="bg-yellow-500 hover:bg-yellow-600">Pendiente</Badge>
-                          ) : (
-                            <Badge variant="destructive">Vencido</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {selectedClientData.invoices.map((invoice) => {
+                      const paidAmount = Number(invoice.paid_amount || 0)
+                      const totalAmount = Number(invoice.total)
+                      const pendingAmount = totalAmount - paidAmount
+
+                      return (
+                        <TableRow key={invoice.id} className="hover:bg-muted/50 transition-colors">
+                          <TableCell className="font-medium">#{invoice.number}</TableCell>
+                          <TableCell>{new Date(invoice.date).toLocaleDateString("es-ES")}</TableCell>
+                          <TableCell className="text-right font-mono">${totalAmount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-mono text-green-600">
+                            ${paidAmount.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            <span className={pendingAmount > 0 ? "text-orange-600" : "text-green-600"}>
+                              ${pendingAmount.toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {paidAmount >= totalAmount ? (
+                              <Badge className="bg-green-500 hover:bg-green-600">Pagado</Badge>
+                            ) : paidAmount > 0 ? (
+                              <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Parcial</Badge>
+                            ) : (
+                              <Badge variant="destructive">Sin pagar</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No hay facturas emitidas para este cliente</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     )
   }
@@ -766,14 +836,12 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
 
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Facturado</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Pagado</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">${totalInvoiced.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {clientDebts.reduce((sum, c) => sum + c.invoiceCount, 0)} facturas emitidas
-            </p>
+            <div className="text-2xl font-bold text-green-600">${totalPaid.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">Pagos recibidos</p>
           </CardContent>
         </Card>
 
@@ -806,7 +874,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
         <Card>
           <CardHeader>
             <CardTitle>Top 10 Clientes - Desglose Financiero</CardTitle>
-            <CardDescription>Comparación de presupuestos, facturas y deudas pendientes</CardDescription>
+            <CardDescription>Comparación de presupuestos, pagos y deudas pendientes</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
@@ -820,7 +888,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
                 />
                 <Legend />
                 <Bar dataKey="Presupuestado" fill="#3b82f6" />
-                <Bar dataKey="Facturado" fill="#10b981" />
+                <Bar dataKey="Pagado" fill="#10b981" />
                 <Bar dataKey="Pendiente" fill="#f97316" />
               </BarChart>
             </ResponsiveContainer>
@@ -874,7 +942,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
                 <Users className="h-5 w-5" />
                 Detalle por Cliente
               </CardTitle>
-              <CardDescription>Desglose completo de presupuestos y facturas por cliente</CardDescription>
+              <CardDescription>Desglose completo de presupuestos y pagos por cliente</CardDescription>
             </div>
             <div className="flex gap-2">
               <Button onClick={exportToCSV} variant="outline" size="sm">
@@ -895,7 +963,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
                 <TableRow className="bg-muted/50">
                   <TableHead className="font-semibold">Cliente</TableHead>
                   <TableHead className="text-right font-semibold">Presupuestado</TableHead>
-                  <TableHead className="text-right font-semibold">Facturado</TableHead>
+                  <TableHead className="text-right font-semibold">Pagado</TableHead>
                   <TableHead className="text-right font-semibold">Pendiente</TableHead>
                   <TableHead className="text-center font-semibold">Docs</TableHead>
                   <TableHead className="text-center font-semibold">Estado</TableHead>
@@ -908,7 +976,7 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
                     <TableCell className="font-medium">{client.clientName}</TableCell>
                     <TableCell className="text-right font-mono">${client.totalBudgets.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-mono text-green-600">
-                      ${client.totalInvoiced.toLocaleString()}
+                      ${client.totalPaid.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       <span
@@ -929,9 +997,9 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
                     </TableCell>
                     <TableCell className="text-center">
                       {client.pendingDebt === 0 ? (
-                        <Badge className="bg-green-500 hover:bg-green-600">Al día</Badge>
-                      ) : client.pendingDebt === client.totalBudgets ? (
-                        <Badge variant="destructive">Sin facturar</Badge>
+                        <Badge className="bg-green-500 hover:bg-green-600">Pagado</Badge>
+                      ) : client.totalPaid === 0 ? (
+                        <Badge variant="destructive">Sin pagar</Badge>
                       ) : (
                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Parcial</Badge>
                       )}
