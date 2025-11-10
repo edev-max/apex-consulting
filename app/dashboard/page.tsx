@@ -39,6 +39,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useSupabaseData } from "@/hooks/useSupabaseData"
 import { AppSidebar } from "@/components/app-sidebar"
 import { DashboardCards } from "@/components/dashboard-cards"
+import { DebtReport } from "@/components/debt-report"
 
 interface Budget {
   id: string
@@ -111,6 +112,7 @@ export default function Dashboard() {
     clients,
     hourEntries,
     hourQuotes,
+    invoices, // Added invoices here
     loading,
     tablesExist,
     dbError,
@@ -1062,6 +1064,8 @@ export default function Dashboard() {
       case "budgets":
         return (
           <div className="space-y-4">
+            <DebtReport budgets={budgets} invoices={invoices} />
+
             <div className="flex gap-2 mb-4">
               <Button
                 variant={budgetFilter === "all" ? "default" : "outline"}
@@ -1917,7 +1921,7 @@ export default function Dashboard() {
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
-                                ${((item.quantity || 0) * (item.rate || 0)).toFixed(2)}
+                                ${(item.quantity || 0 * (item.rate || 0)).toFixed(2)}
                               </TableCell>
                               {isEditingBudget && (
                                 <TableCell>
