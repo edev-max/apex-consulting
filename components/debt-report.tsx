@@ -365,8 +365,8 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
   <title>${client ? `Reporte de Deudas - ${client.clientName}` : "Reporte de Deudas - Todos los Clientes"}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; background: white; }
-    .container { max-width: 900px; margin: 0 auto; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #333; background: white; }
+    .container { max-width: 100%; margin: 0 auto; }
     
     .header { 
       display: flex; 
@@ -525,11 +525,15 @@ export function DebtReport({ budgets, invoices, companyName = "Mi Empresa", comp
     }
     
     @media print {
-      body { padding: 20px; }
+      body { padding: 15px; }
       .no-print { display: none; }
       .summary-item { break-inside: avoid; }
       table { page-break-inside: auto; }
       tr { page-break-inside: avoid; page-break-after: auto; }
+      @page {
+        size: landscape;
+        margin: 15mm;
+      }
     }
   </style>
 </head>

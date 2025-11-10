@@ -32,6 +32,8 @@ import {
   DatabaseIcon,
   AlertTriangleIcon,
   UserIcon,
+  Users,
+  X,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -95,6 +97,7 @@ export default function Dashboard() {
   const [configLoading, setConfigLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("dashboard")
   const [budgetFilter, setBudgetFilter] = useState<"all" | "paid" | "pending" | "overdue">("all")
+  const [selectedClientForDebtReport, setSelectedClientForDebtReport] = useState<string>("all")
 
   // Estados para configuración de empresa y perfil
   const [companyName, setCompanyName] = useState("")
@@ -1066,12 +1069,71 @@ export default function Dashboard() {
           <div className="space-y-4">
             {/* Tab: Presupuestos - Reporte de Deudas */}
             {activeTab === "budgets" && (
-              <DebtReport
-                budgets={budgets}
-                invoices={invoices}
-                companyName={companySettings?.company_name || "Mi Empresa"}
-                companyLogo={companySettings?.company_logo_url || undefined}
-              />
+              <>
+                <Card className="mb-6 border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-900">
+                      <Users className="h-5 w-5" />
+                      Filtrar Reporte de Deudas por Cliente
+                    </CardTitle>
+                    <CardDescription>
+                      Selecciona un cliente para ver únicamente sus deudas pendientes y presupuestos
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4">
+                      <select
+                        className="flex-1 p-3 border-2 border-blue-300 rounded-lg text-base font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        value={selectedClientForDebtReport}
+                        onChange={(e) => setSelectedClientForDebtReport(e.target.value)}
+                      >
+                        <option value="all">Todos los Clientes</option>
+                        {Array.from(new Set(budgets.map((b) => b.client_name)))
+                          .sort()
+                          .map((clientName) => {
+                            const clientBudgets = budgets.filter((b) => b.client_name === clientName)
+                            const totalBudgeted = clientBudgets.reduce((sum, b) => sum + Number(b.total), 0)
+                            const clientInvoices = invoices.filter((inv) => inv.client_name === clientName)
+                            const totalInvoiced = clientInvoices.reduce((sum, inv) => sum + Number(inv.total), 0)
+                            const pendingDebt = totalBudgeted - totalInvoiced
+
+                            return (
+                              <option key={clientName} value={clientName}>
+                                {clientName} - Deuda: ${pendingDebt.toLocaleString()} ({clientBudgets.length}{" "}
+                                presupuestos)
+                              </option>
+                            )
+                          })}
+                      </select>
+                      {selectedClientForDebtReport !== "all" && (
+                        <Button
+                          variant="outline"
+                          onClick={() => setSelectedClientForDebtReport("all")}
+                          className="flex items-center gap-2"
+                        >
+                          <X className="h-4 w-4" />
+                          Limpiar filtro
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <DebtReport
+                  budgets={
+                    selectedClientForDebtReport === "all"
+                      ? budgets
+                      : budgets.filter((b) => b.client_name === selectedClientForDebtReport)
+                  }
+                  invoices={
+                    selectedClientForDebtReport === "all"
+                      ? invoices
+                      : invoices.filter((inv) => inv.client_name === selectedClientForDebtReport)
+                  }
+                  companyName={companySettings?.company_name || "Mi Empresa"}
+                  companyLogo={companySettings?.company_logo_url || undefined}
+                />
+              </>
             )}
 
             <div className="flex gap-2 mb-4">
