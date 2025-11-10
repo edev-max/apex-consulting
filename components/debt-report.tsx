@@ -4,7 +4,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Download, AlertCircle } from "lucide-react"
+import { Download, AlertCircle, DollarSign, TrendingUp, FileText, Users, BarChart3 } from "lucide-react"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts"
 
 interface Budget {
   id: string
@@ -75,6 +88,35 @@ export function DebtReport({ budgets, invoices }: DebtReportProps) {
 
   const clientDebts = calculateClientDebts()
   const totalPendingDebt = clientDebts.reduce((sum, client) => sum + client.pendingDebt, 0)
+  const totalBudgeted = clientDebts.reduce((sum, c) => sum + c.totalBudgets, 0)
+  const totalInvoiced = clientDebts.reduce((sum, c) => sum + c.totalInvoiced, 0)
+  const collectionRate = totalBudgeted > 0 ? ((totalInvoiced / totalBudgeted) * 100).toFixed(1) : "0"
+
+  const topDebtors = clientDebts.slice(0, 10)
+  const chartData = topDebtors.map((client) => ({
+    name: client.clientName.length > 15 ? client.clientName.substring(0, 15) + "..." : client.clientName,
+    Presupuestado: client.totalBudgets,
+    Facturado: client.totalInvoiced,
+    Pendiente: client.pendingDebt,
+  }))
+
+  const statusDistribution = [
+    {
+      name: "Al día",
+      value: clientDebts.filter((c) => c.pendingDebt === 0).length,
+      color: "#10b981",
+    },
+    {
+      name: "Sin facturar",
+      value: clientDebts.filter((c) => c.pendingDebt === c.totalBudgets && c.totalBudgets > 0).length,
+      color: "#ef4444",
+    },
+    {
+      name: "Parcial",
+      value: clientDebts.filter((c) => c.pendingDebt > 0 && c.pendingDebt < c.totalBudgets).length,
+      color: "#f97316",
+    },
+  ].filter((item) => item.value > 0)
 
   const exportToCSV = () => {
     const headers = [
@@ -125,13 +167,134 @@ export function DebtReport({ budgets, invoices }: DebtReportProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Presupuestado</CardTitle>
+            <FileText className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">${totalBudgeted.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {clientDebts.reduce((sum, c) => sum + c.budgetCount, 0)} presupuestos
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Facturado</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">${totalInvoiced.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {clientDebts.reduce((sum, c) => sum + c.invoiceCount, 0)} facturas emitidas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Deuda Pendiente</CardTitle>
+            <TrendingUp className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">${totalPendingDebt.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {clientDebts.filter((c) => c.pendingDebt > 0).length} clientes con deuda
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tasa de Cobro</CardTitle>
+            <BarChart3 className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{collectionRate}%</div>
+            <p className="text-xs text-muted-foreground mt-1">Del total presupuestado</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bar chart for top debtors */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Top 10 Clientes - Desglose Financiero</CardTitle>
+            <CardDescription>Comparación de presupuestos, facturas y deudas pendientes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} fontSize={12} />
+                <YAxis />
+                <Tooltip
+                  formatter={(value) => [`$${Number(value).toLocaleString()}`, ""]}
+                  contentStyle={{ backgroundColor: "rgba(255, 255, 255, 0.95)", border: "1px solid #ccc" }}
+                />
+                <Legend />
+                <Bar dataKey="Presupuestado" fill="#3b82f6" />
+                <Bar dataKey="Facturado" fill="#10b981" />
+                <Bar dataKey="Pendiente" fill="#f97316" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Pie chart for status distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Distribución por Estado de Pago</CardTitle>
+            <CardDescription>Clientes según su estado de cuenta</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <PieChart>
+                <Pie
+                  data={statusDistribution}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={120}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {statusDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+              {statusDistribution.map((status, index) => (
+                <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold" style={{ color: status.color }}>
+                    {status.value}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{status.name}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle>Reporte de Deudas por Cliente</CardTitle>
-              <CardDescription>Desglose de presupuestos vs facturas emitidas</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Detalle por Cliente
+              </CardTitle>
+              <CardDescription>Desglose completo de presupuestos y facturas por cliente</CardDescription>
             </div>
             <Button onClick={exportToCSV} variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
@@ -140,73 +303,57 @@ export function DebtReport({ budgets, invoices }: DebtReportProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>Total Presupuestado</CardDescription>
-                <CardTitle className="text-2xl">
-                  ${clientDebts.reduce((sum, c) => sum + c.totalBudgets, 0).toLocaleString()}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>Total Facturado</CardDescription>
-                <CardTitle className="text-2xl">
-                  ${clientDebts.reduce((sum, c) => sum + c.totalInvoiced, 0).toLocaleString()}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>Deuda Pendiente Total</CardDescription>
-                <CardTitle className="text-2xl text-orange-600">${totalPendingDebt.toLocaleString()}</CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead className="text-right">Total Presupuestos</TableHead>
-                <TableHead className="text-right">Total Facturado</TableHead>
-                <TableHead className="text-right">Deuda Pendiente</TableHead>
-                <TableHead className="text-center">Presupuestos</TableHead>
-                <TableHead className="text-center">Facturas</TableHead>
-                <TableHead className="text-center">Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clientDebts.map((client, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{client.clientName}</TableCell>
-                  <TableCell className="text-right">${client.totalBudgets.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">${client.totalInvoiced.toLocaleString()}</TableCell>
-                  <TableCell className="text-right font-semibold">
-                    <span className={client.pendingDebt > 0 ? "text-orange-600" : "text-green-600"}>
-                      ${client.pendingDebt.toLocaleString()}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">{client.budgetCount}</TableCell>
-                  <TableCell className="text-center">{client.invoiceCount}</TableCell>
-                  <TableCell className="text-center">
-                    {client.pendingDebt === 0 ? (
-                      <Badge variant="default" className="bg-green-500">
-                        Al día
-                      </Badge>
-                    ) : client.pendingDebt === client.totalBudgets ? (
-                      <Badge variant="destructive">Sin facturar</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-orange-500 text-white">
-                        Parcial
-                      </Badge>
-                    )}
-                  </TableCell>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="font-semibold">Cliente</TableHead>
+                  <TableHead className="text-right font-semibold">Presupuestado</TableHead>
+                  <TableHead className="text-right font-semibold">Facturado</TableHead>
+                  <TableHead className="text-right font-semibold">Pendiente</TableHead>
+                  <TableHead className="text-center font-semibold">Docs</TableHead>
+                  <TableHead className="text-center font-semibold">Estado</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {clientDebts.map((client, index) => (
+                  <TableRow key={index} className="hover:bg-muted/50 transition-colors">
+                    <TableCell className="font-medium">{client.clientName}</TableCell>
+                    <TableCell className="text-right font-mono">${client.totalBudgets.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-mono text-green-600">
+                      ${client.totalInvoiced.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      <span
+                        className={`font-semibold ${client.pendingDebt > 0 ? "text-orange-600" : "text-green-600"}`}
+                      >
+                        ${client.pendingDebt.toLocaleString()}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">
+                          {client.budgetCount} P
+                        </span>
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">
+                          {client.invoiceCount} F
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {client.pendingDebt === 0 ? (
+                        <Badge className="bg-green-500 hover:bg-green-600">Al día</Badge>
+                      ) : client.pendingDebt === client.totalBudgets ? (
+                        <Badge variant="destructive">Sin facturar</Badge>
+                      ) : (
+                        <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Parcial</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
