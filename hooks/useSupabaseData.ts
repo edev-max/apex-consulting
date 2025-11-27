@@ -47,13 +47,16 @@ interface Client {
 
 interface HourEntry {
   id: string
-  client_id: string
+  client_id: string | null
   client_name: string
   date: string
   hours: number
   description: string
   project: string
   paid: boolean
+  budget_id?: string
+  budget_name?: string
+  type?: "add" | "subtract"
 }
 
 interface HourQuote {
@@ -426,22 +429,30 @@ export const useSupabaseData = () => {
   }
 
   const saveHourEntry = async (entryData: {
-    clientId: string
-    clientName: string
+    client_id: string | null
+    client_name: string
     hours: number
     description: string
     project: string
+    budget_id?: string
+    budget_name?: string
+    type?: "add" | "subtract"
+    date?: string
   }) => {
     if (!user || !tablesExist) return
 
     try {
       const supabase = getClient()
       const { error } = await supabase.from("hour_entries").insert({
-        client_id: entryData.clientId,
-        client_name: entryData.clientName,
+        client_id: entryData.client_id,
+        client_name: entryData.client_name,
         hours: entryData.hours,
         description: entryData.description,
         project: entryData.project,
+        budget_id: entryData.budget_id || null,
+        budget_name: entryData.budget_name || null,
+        type: entryData.type || "add",
+        date: entryData.date || new Date().toISOString().split("T")[0],
         paid: false,
         user_id: user.id,
       })
