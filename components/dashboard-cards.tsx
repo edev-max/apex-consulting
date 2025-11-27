@@ -15,24 +15,15 @@ import {
   LineChart,
   Line,
 } from "recharts"
-import {
-  TrendingUpIcon,
-  DollarSignIcon,
-  UsersIcon,
-  ClockIcon,
-  FileTextIcon,
-  AlertCircleIcon,
-  CheckCircleIcon,
-} from "lucide-react"
+import { DollarSignIcon, UsersIcon, ClockIcon, AlertCircleIcon } from "lucide-react"
 
 interface DashboardCardsProps {
   budgets: any[]
   clients: any[]
   hourEntries: any[]
-  hourQuotes: any[]
 }
 
-export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: DashboardCardsProps) {
+export function DashboardCards({ budgets, clients, hourEntries }: DashboardCardsProps) {
   const totalRevenue = budgets.reduce((sum, budget) => sum + budget.total, 0)
   const totalPaidRevenue = budgets.reduce((sum, budget) => sum + (budget.paid_amount || 0), 0)
   const totalPendingRevenue = totalRevenue - totalPaidRevenue
@@ -42,8 +33,12 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
 
   const consumedHours = clients.reduce((sum, client) => sum + client.consumed_hours, 0)
 
-  const pendingQuotes = hourQuotes.filter((q) => q.status === "pending")
-  const approvedQuotes = hourQuotes.filter((q) => q.status === "approved")
+  const totalHoursAdded = hourEntries
+    .filter((e) => e.type === "add" || e.hours > 0)
+    .reduce((sum, e) => sum + Math.abs(e.hours), 0)
+  const totalHoursSubtracted = hourEntries
+    .filter((e) => e.type === "subtract" || e.hours < 0)
+    .reduce((sum, e) => sum + Math.abs(e.hours), 0)
 
   const budgetStatusData = [
     { name: "Pagados", value: paidBudgets.length, color: "#10b981" },
@@ -84,242 +79,122 @@ export function DashboardCards({ budgets, clients, hourEntries, hourQuotes }: Da
           <CardContent>
             <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600 flex items-center">
-                <TrendingUpIcon className="h-3 w-3 mr-1" />${totalPaidRevenue.toLocaleString()} pagados
-              </span>
+              <span className="text-green-600">${totalPaidRevenue.toLocaleString()}</span> pagados
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Activos</CardTitle>
+            <CardTitle className="text-sm font-medium">Pendiente por Cobrar</CardTitle>
+            <AlertCircleIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">${totalPendingRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">{pendingBudgets.length} presupuestos pendientes</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Clientes</CardTitle>
             <UsersIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clients.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {clients.filter((c) => c.consumed_hours > 0).length} con horas pendientes
-            </p>
+            <p className="text-xs text-muted-foreground">{consumedHours} horas consumidas</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Horas Pendientes de Pago</CardTitle>
+            <CardTitle className="text-sm font-medium">Horas Registradas</CardTitle>
             <ClockIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{consumedHours}h</div>
+            <div className="text-2xl font-bold">{hourEntries.length}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-orange-600">
-                {clients.filter((c) => c.consumed_hours > 0).length} clientes con horas por cobrar
-              </span>
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Presupuestos</CardTitle>
-            <FileTextIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{budgets.length}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">{paidBudgets.length} pagados</span> •{" "}
-              <span className="text-yellow-600">{pendingBudgets.length} pendientes</span>
+              <span className="text-green-600">+{totalHoursAdded}h</span> /{" "}
+              <span className="text-red-600">-{totalHoursSubtracted}h</span>
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Gráficos principales */}
+      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico de estado de presupuestos */}
+        {/* Gráfico de ingresos */}
         <Card>
           <CardHeader>
-            <CardTitle>Estado de Presupuestos</CardTitle>
-            <CardDescription>Distribución por estado de pago</CardDescription>
+            <CardTitle className="text-lg">Ingresos: Pagados vs Pendientes</CardTitle>
+            <CardDescription>Comparación de ingresos cobrados y pendientes</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={budgetStatusData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {budgetStatusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Análisis de Ingresos</CardTitle>
-            <CardDescription>Ingresos pagados vs pendientes de pago</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, "Monto"]} />
-                <Bar dataKey="amount" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Gráficos secundarios */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gráfico de horas pendientes por cliente */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Horas Pendientes por Cliente</CardTitle>
-            <CardDescription>Clientes con horas por cobrar</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={clients
-                  .filter((c) => c.consumed_hours > 0)
-                  .slice(0, 10)
-                  .map((c) => ({ name: c.name, hours: c.consumed_hours }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <Tooltip formatter={(value) => [`${value}h`, "Horas Pendientes"]} />
-                <Bar dataKey="hours" fill="#f97316" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Actividad mensual */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Actividad Mensual</CardTitle>
-            <CardDescription>Tendencia de presupuestos por mes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="presupuestos" stroke="#3b82f6" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Alertas y notificaciones */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircleIcon className="h-5 w-5 text-yellow-500" />
-              Cotizaciones Pendientes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">{pendingQuotes.length}</div>
-            <p className="text-sm text-muted-foreground mt-2">Requieren tu atención</p>
-            {pendingQuotes.slice(0, 3).map((quote) => (
-              <div key={quote.id} className="mt-2 p-2 bg-yellow-50 rounded text-sm">
-                <div className="font-medium">{quote.client_name}</div>
-                <div className="text-xs text-gray-600">
-                  {quote.requested_hours}h - {quote.project}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircleIcon className="h-5 w-5 text-green-500" />
-              Cotizaciones Aprobadas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">{approvedQuotes.length}</div>
-            <p className="text-sm text-muted-foreground mt-2">Este mes</p>
-            <div className="mt-2 text-sm">
-              <div className="text-green-600 font-medium">
-                {approvedQuotes.reduce((sum, q) => sum + q.requested_hours, 0)}h aprobadas
-              </div>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+                  <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
+        {/* Gráfico de estado de presupuestos */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClockIcon className="h-5 w-5 text-orange-500" />
-              Horas por Cobrar
-            </CardTitle>
+            <CardTitle className="text-lg">Estado de Presupuestos</CardTitle>
+            <CardDescription>Distribución por estado de pago</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">{consumedHours}h</div>
-            <p className="text-sm text-muted-foreground mt-2">Total pendientes de pago</p>
-            {clients
-              .filter((c) => c.consumed_hours > 0)
-              .slice(0, 3)
-              .map((client) => (
-                <div key={client.id} className="mt-2 p-2 bg-orange-50 rounded text-sm">
-                  <div className="font-medium">{client.name}</div>
-                  <div className="text-xs text-orange-600">{client.consumed_hours}h pendientes</div>
-                </div>
-              ))}
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={budgetStatusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {budgetStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Resumen de actividad reciente */}
+      {/* Actividad mensual */}
       <Card>
         <CardHeader>
-          <CardTitle>Actividad Reciente</CardTitle>
-          <CardDescription>Últimas acciones en el sistema</CardDescription>
+          <CardTitle className="text-lg">Actividad Mensual</CardTitle>
+          <CardDescription>Presupuestos e ingresos por mes</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {hourEntries.slice(0, 5).map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div>
-                    <div className="font-medium">{entry.client_name}</div>
-                    <div className="text-sm text-gray-600">{entry.description}</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium">{entry.hours}h</div>
-                  <div className="text-xs text-gray-500">{new Date(entry.date).toLocaleDateString("es-ES")}</div>
-                </div>
-              </div>
-            ))}
-            {hourEntries.length === 0 && (
-              <div className="text-center py-8 text-gray-500">No hay actividad reciente</div>
-            )}
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Line yAxisId="left" type="monotone" dataKey="presupuestos" stroke="#3b82f6" strokeWidth={2} />
+                <Line yAxisId="right" type="monotone" dataKey="ingresos" stroke="#10b981" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>

@@ -2,7 +2,6 @@
 
 import type React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import {
-  AlertCircleIcon,
   FileTextIcon,
   UserIcon,
   ClockIcon,
@@ -33,7 +31,6 @@ import { useSupabaseData } from "@/hooks/useSupabaseData"
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   budgetsCount: number
   clientsCount: number
-  quotesCount: number
   hoursCount: number
   activeTab: string
   onTabChange: (tab: string) => void
@@ -42,7 +39,6 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 export function AppSidebar({
   budgetsCount,
   clientsCount,
-  quotesCount,
   hoursCount,
   activeTab,
   onTabChange,
@@ -50,7 +46,6 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const { user, signOut } = useAuth()
   const { companySettings, userProfile } = useSupabaseData()
-  const pathname = usePathname()
 
   const handleSignOut = async () => {
     if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
@@ -65,13 +60,6 @@ export function AppSidebar({
       icon: TrendingUpIcon,
       count: 0,
       description: "Resumen general",
-    },
-    {
-      id: "quotes",
-      title: "Cotizaciones",
-      icon: AlertCircleIcon,
-      count: quotesCount,
-      description: "Solicitudes de horas",
     },
     {
       id: "budgets",
@@ -114,7 +102,6 @@ export function AppSidebar({
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="flex items-center gap-2 px-4 py-2">
-          {/* Logo de la empresa o iniciales como fallback */}
           {companySettings?.company_logo_url ? (
             <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden bg-primary/10">
               <img
@@ -122,7 +109,6 @@ export function AppSidebar({
                 alt="Logo"
                 className="h-full w-full object-contain"
                 onError={(e) => {
-                  // Si la imagen falla al cargar, mostrar fallback
                   const target = e.target as HTMLImageElement
                   target.style.display = "none"
                   target.nextElementSibling?.classList.remove("hidden")
@@ -198,7 +184,6 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="px-2 py-1 flex items-center gap-2">
-              {/* Avatar del usuario */}
               {userProfile?.avatar_url ? (
                 <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200">
                   <img
@@ -206,7 +191,6 @@ export function AppSidebar({
                     alt="Avatar"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // Si la imagen falla al cargar, mostrar fallback
                       const target = e.target as HTMLImageElement
                       target.style.display = "none"
                       target.nextElementSibling?.classList.remove("hidden")
