@@ -14,8 +14,6 @@ interface Budget {
   date: string
   status: "pending" | "paid" | "overdue"
   items?: any[]
-  paid_amount?: number
-  payment_status?: "unpaid" | "partial" | "paid"
 }
 
 interface Invoice {
@@ -49,16 +47,13 @@ interface Client {
 
 interface HourEntry {
   id: string
-  client_id: string | null
+  client_id: string
   client_name: string
   date: string
   hours: number
   description: string
   project: string
   paid: boolean
-  budget_id?: string
-  budget_name?: string
-  type?: "add" | "subtract"
 }
 
 interface HourQuote {
@@ -85,18 +80,7 @@ interface UserProfile {
   full_name: string | null
 }
 
-interface BudgetPayment {
-  id: string
-  budget_id: string
-  amount: number
-  payment_date: string
-  payment_method: string
-  reference_number?: string
-  notes?: string
-  created_at: string
-}
-
-export function useSupabaseData() {
+export const useSupabaseData = () => {
   const { user } = useAuth()
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -105,7 +89,6 @@ export function useSupabaseData() {
   const [hourQuotes, setHourQuotes] = useState<HourQuote[]>([])
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [budgetPayments, setBudgetPayments] = useState<BudgetPayment[]>([])
   const [loading, setLoading] = useState(true)
   const [tablesExist, setTablesExist] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
@@ -125,7 +108,6 @@ export function useSupabaseData() {
         "user_profiles",
         "invoices",
         "budget_invoice_items",
-        "budget_payments",
       ]
       const tableChecks = await Promise.all(
         tables.map(async (table) => {
@@ -159,12 +141,11 @@ export function useSupabaseData() {
     }
   }
 
-  // Cargar datos iniciales cuando el usuario está autenticado
+  // Cargar datos iniciales
   useEffect(() => {
     if (user) {
       loadAllData()
     } else {
-      // Si no hay usuario, dejamos de cargar
       setLoading(false)
     }
   }, [user])
@@ -190,7 +171,6 @@ export function useSupabaseData() {
         loadHourQuotes(),
         loadCompanySettings(),
         loadUserProfile(),
-        loadBudgetPayments(),
       ])
     } catch (error) {
       console.error("Error loading data:", error)
@@ -228,8 +208,6 @@ export function useSupabaseData() {
           date: budget.date,
           status: budget.status,
           items: budget.items,
-          paid_amount: budget.paid_amount,
-          payment_status: budget.payment_status,
         })),
       )
     } catch (error) {
@@ -277,11 +255,11 @@ export function useSupabaseData() {
   }
 
   const updateBudget = async (budgetId: string, updates: Partial<Budget>) => {
-    if (!user || !tablesExist) return null
+    if (!user || !tablesExist) return
 
     try {
       const supabase = getClient()
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("budgets")
         .update({
           client_name: updates.client_name,
@@ -290,25 +268,18 @@ export function useSupabaseData() {
           total: updates.total,
           status: updates.status,
           items: updates.items,
-          paid_amount: updates.paid_amount,
-          payment_status: updates.payment_status,
-          number: updates.number,
         })
         .eq("id", budgetId)
         .eq("user_id", user.id)
-        .select()
-        .single()
 
       if (error) {
         console.error("Error updating budget:", error)
-        return null
+        return
       }
 
       await loadBudgets()
-      return data
     } catch (error) {
       console.error("Error updating budget:", error)
-      return null
     }
   }
 
@@ -455,30 +426,22 @@ export function useSupabaseData() {
   }
 
   const saveHourEntry = async (entryData: {
-    client_id: string | null
-    client_name: string
+    clientId: string
+    clientName: string
     hours: number
     description: string
     project: string
-    budget_id?: string
-    budget_name?: string
-    type?: "add" | "subtract"
-    date?: string
   }) => {
     if (!user || !tablesExist) return
 
     try {
       const supabase = getClient()
       const { error } = await supabase.from("hour_entries").insert({
-        client_id: entryData.client_id,
-        client_name: entryData.client_name,
+        client_id: entryData.clientId,
+        client_name: entryData.clientName,
         hours: entryData.hours,
         description: entryData.description,
         project: entryData.project,
-        budget_id: entryData.budget_id || null,
-        budget_name: entryData.budget_name || null,
-        type: entryData.type || "add",
-        date: entryData.date || new Date().toISOString().split("T")[0],
         paid: false,
         user_id: user.id,
       })
@@ -1004,94 +967,6 @@ export function useSupabaseData() {
     }
   }
 
-  // Funciones para pagos de presupuestos
-  const loadBudgetPayments = async () => {
-    if (!user || !tablesExist) return
-
-    try {
-      const supabase = getClient()
-      const { data, error } = await supabase
-        .from("budget_payments")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("payment_date", { ascending: false })
-
-      if (error) {
-        console.error("Error loading budget payments:", error)
-        return
-      }
-
-      setBudgetPayments(data || [])
-    } catch (error) {
-      console.error("Error loading budget payments:", error)
-    }
-  }
-
-  const registerBudgetPayment = async (paymentData: {
-    budget_id: string
-    amount: number
-    payment_date: string
-    payment_method: string
-    reference_number: string
-    notes: string
-  }) => {
-    if (!user || !tablesExist) return null
-
-    try {
-      const supabase = getClient()
-      const { data, error } = await supabase
-        .from("budget_payments")
-        .insert({
-          budget_id: paymentData.budget_id,
-          amount: paymentData.amount,
-          payment_date: paymentData.payment_date,
-          payment_method: paymentData.payment_method,
-          reference_number: paymentData.reference_number || null,
-          notes: paymentData.notes || null,
-          user_id: user.id,
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error("Error registering payment:", error)
-        return null
-      }
-
-      // Reload budgets and payments to get updated data
-      await loadBudgets()
-      await loadBudgetPayments()
-      return data
-    } catch (error) {
-      console.error("Error registering payment:", error)
-      return null
-    }
-  }
-
-  const deleteBudgetPayment = async (paymentId: string) => {
-    if (!user || !tablesExist) return
-
-    try {
-      const supabase = getClient()
-      const { error } = await supabase.from("budget_payments").delete().eq("id", paymentId).eq("user_id", user.id)
-
-      if (error) {
-        console.error("Error deleting payment:", error)
-        return
-      }
-
-      // Reload budgets and payments to get updated data
-      await loadBudgets()
-      await loadBudgetPayments()
-    } catch (error) {
-      console.error("Error deleting payment:", error)
-    }
-  }
-
-  const getPaymentsByBudget = (budgetId: string) => {
-    return budgetPayments.filter((p) => p.budget_id === budgetId)
-  }
-
   return {
     budgets,
     invoices,
@@ -1100,7 +975,6 @@ export function useSupabaseData() {
     hourQuotes,
     companySettings,
     userProfile,
-    budgetPayments,
     loading,
     tablesExist,
     dbError,
@@ -1130,9 +1004,5 @@ export function useSupabaseData() {
     loadAllData,
     checkTablesExist,
     uploadFile,
-    loadBudgetPayments,
-    registerBudgetPayment,
-    deleteBudgetPayment,
-    getPaymentsByBudget,
   }
 }
