@@ -1,487 +1,1162 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { useAuth } from "@/hooks/useAuth"
-import { useRouter } from "next/navigation"
-import {
-  ArrowRight,
-  Code2,
-  Layers,
-  Zap,
-  Shield,
-  Users,
-  BarChart3,
-  ChevronRight,
-  ExternalLink,
-  Lock,
-} from "lucide-react"
+import type React from "react"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import {
+  PlusIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  DatabaseIcon,
+  AlertTriangleIcon,
+  Trash2Icon,
+  PencilIcon,
+  SaveIcon,
+  XIcon,
+  DollarSignIcon,
+  TrendingUpIcon,
+  TrendingDownIcon,
+  FileTextIcon,
+} from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/useAuth"
+import { useSupabaseData } from "@/hooks/useSupabaseData"
+import { AppSidebar } from "@/components/app-sidebar"
+import { DashboardCards } from "@/components/dashboard-cards"
+import { DebtReport } from "@/components/debt-report"
+import { AddHoursDialog } from "@/components/add-hours-dialog"
+import { RegisterPaymentDialog } from "@/components/register-payment-dialog"
 
-// Hook para detectar cuando un elemento está visible en el viewport
-function useInView(options = {}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [isInView, setIsInView] = useState(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIsInView(true)
-      }
-    }, { threshold: 0.1, ...options })
-
-    if (ref.current) {
-      observer.observe(ref.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
-
-  return { ref, isInView }
+interface Budget {
+  id: string
+  number: string
+  client_name: string
+  project_name: string
+  project_description?: string
+  total: number
+  date: string
+  status: "pending" | "paid" | "overdue"
+  items?: any[]
+  paid_amount?: number
 }
 
-const services = [
-  {
-    icon: Code2,
-    title: "Desarrollo de Software",
-    description: "Soluciones tecnológicas a medida para impulsar tu negocio hacia la transformación digital.",
-  },
-  {
-    icon: Layers,
-    title: "Arquitectura de Sistemas",
-    description: "Diseño e implementación de arquitecturas escalables y robustas para empresas.",
-  },
-  {
-    icon: Zap,
-    title: "Optimización de Procesos",
-    description: "Automatización y mejora de procesos empresariales para maximizar la eficiencia.",
-  },
-  {
-    icon: Shield,
-    title: "Consultoría IT",
-    description: "Asesoramiento estratégico en tecnología para la toma de decisiones informadas.",
-  },
-]
+interface Client {
+  id: string
+  name: string
+  email?: string
+  total_hours: number
+  consumed_hours: number
+  remaining_hours: number
+}
 
-const projects = [
-  {
-    title: "Sistema de Gestión Empresarial",
-    category: "Enterprise Software",
-    description: "Plataforma integral para la gestión de operaciones, finanzas y recursos humanos.",
-    image: "/enterprise-dashboard-software-dark-theme.jpg",
-  },
-  {
-    title: "Portal de Servicios Digitales",
-    category: "Web Application",
-    description: "Solución web para la digitalización de servicios gubernamentales.",
-    image: "/modern-web-portal-dark-theme-government.jpg",
-  },
-  {
-    title: "App de Logística Inteligente",
-    category: "Mobile & Backend",
-    description: "Sistema completo de tracking y optimización de rutas en tiempo real.",
-    image: "/logistics-tracking-app-dark-theme.jpg",
-  },
-]
+interface HourEntry {
+  id: string
+  client_id: string | null
+  client_name: string
+  date: string
+  hours: number
+  description: string
+  project: string
+  paid?: boolean
+  budget_id?: string
+  budget_name?: string
+  type?: "add" | "subtract"
+}
 
-const stats = [
-  { value: "150+", label: "Proyectos Completados" },
-  { value: "50+", label: "Clientes Satisfechos" },
-  { value: "10+", label: "Años de Experiencia" },
-  { value: "99%", label: "Tasa de Satisfacción" },
-]
-
-export default function Home() {
-  const { user, loading } = useAuth()
+export default function DashboardPage() {
   const router = useRouter()
-  const [isScrolled, setIsScrolled] = useState(false)
 
-  // Hooks para animaciones de scroll
-  const statsSection = useInView()
-  const servicesSection = useInView()
-  const projectsSection = useInView()
-  const aboutSection = useInView()
-  const contactSection = useInView()
+  // Estados para edición de clientes
+  const [editingClient, setEditingClient] = useState<string | null>(null)
+  const [editClientName, setEditClientName] = useState("")
+  const [editClientEmail, setEditClientEmail] = useState("")
 
+  // Estados para agregar nuevos clientes
+  const [newClientName, setNewClientName] = useState("")
+  const [newClientEmail, setNewClientEmail] = useState("")
+
+  // Estados para configuración y filtros
+  const [activeTab, setActiveTab] = useState("dashboard")
+  const [selectedClientForDebtReport, setSelectedClientForDebtReport] = useState<string>("all")
+
+  // Estados para configuración de empresa y perfil
+  const [companyName, setCompanyName] = useState("")
+  const [companyLogo, setCompanyLogo] = useState<File | null>(null)
+  const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [fullName, setFullName] = useState("")
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+
+  const [showRegisterPaymentDialog, setShowRegisterPaymentDialog] = useState(false)
+  const [selectedBudgetForPayment, setSelectedBudgetForPayment] = useState<string | undefined>()
+
+  const { user, updatePassword } = useAuth()
+  const {
+    budgets,
+    clients,
+    hourEntries,
+    invoices,
+    loading,
+    tablesExist,
+    dbError,
+    saveClient,
+    updateClient,
+    deleteClient,
+    saveHourEntry,
+    deleteHourEntry,
+    markHourEntryAsPaid,
+    deleteBudget,
+    companySettings,
+    userProfile,
+    saveCompanySettings,
+    saveUserProfile,
+    checkTablesExist,
+    budgetPayments,
+    registerBudgetPayment,
+    deleteBudgetPayment,
+    getPaymentsByBudget,
+  } = useSupabaseData()
+
+  // Estados para cambio de contraseña
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordError, setPasswordError] = useState("")
+  const [passwordSuccess, setPasswordSuccess] = useState("")
+
+  // Cargar configuración de empresa y perfil
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50)
+    if (companySettings) {
+      setCompanyName(companySettings.company_name || "")
+      setCompanyLogoPreview(companySettings.company_logo_url || null)
     }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+    if (userProfile) {
+      setFullName(userProfile.full_name || "")
+      setAvatarPreview(userProfile.avatar_url || null)
+    }
+  }, [companySettings, userProfile])
 
-  const handleAccessSystem = () => {
-    if (user) {
-      router.push("/dashboard")
+  // Función para manejar cambio de tab
+  const handleTabChange = (tab: string) => {
+    if (tab === "new-budget") {
+      router.push("/budget-report")
     } else {
-      router.push("/login")
+      setActiveTab(tab)
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      {/* Navigation */}
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled ? "bg-[#0a0a0f]/90 backdrop-blur-md border-b border-white/10" : ""
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-black font-bold text-xl">A</span>
-              </div>
-              <span className="text-xl font-semibold tracking-tight">APEX CONSULTING</span>
+  // Función para guardar entrada de horas
+  const handleSaveHourEntry = async (entry: {
+    budget_id: string
+    budget_name: string
+    client_name: string
+    project: string
+    hours: number
+    type: "add" | "subtract"
+    description: string
+    date: string
+  }) => {
+    const client = clients.find((c) => c.name === entry.client_name)
+    await saveHourEntry({
+      client_id: client?.id || null,
+      client_name: entry.client_name,
+      project: entry.project,
+      hours: entry.hours,
+      description: entry.description,
+      date: entry.date,
+      budget_id: entry.budget_id,
+      budget_name: entry.budget_name,
+      type: entry.type,
+    })
+  }
+
+  // Funciones para manejar clientes
+  const handleSaveClient = async () => {
+    if (!newClientName.trim()) return
+    await saveClient({
+      name: newClientName,
+      email: newClientEmail || "",
+    })
+    setNewClientName("")
+    setNewClientEmail("")
+  }
+
+  const handleUpdateClient = async (id: string) => {
+    if (!editClientName.trim()) return
+    await updateClient(id, {
+      name: editClientName,
+      email: editClientEmail || "",
+    })
+    setEditingClient(null)
+    setEditClientName("")
+    setEditClientEmail("")
+  }
+
+  const handleDeleteClient = async (id: string) => {
+    if (confirm("¿Estás seguro de que quieres eliminar este cliente?")) {
+      await deleteClient(id)
+    }
+  }
+
+  // Funciones para manejar horas
+  const handleDeleteHourEntry = async (id: string) => {
+    if (confirm("¿Estás seguro de que quieres eliminar este registro de horas?")) {
+      await deleteHourEntry(id)
+    }
+  }
+
+  const handleMarkHourAsPaid = async (id: string) => {
+    if (confirm("¿Estás seguro de que quieres marcar este registro como pagado?")) {
+      await markHourEntryAsPaid(id)
+    }
+  }
+
+  // Funciones de configuración
+  const handlePasswordChange = async () => {
+    setPasswordError("")
+    setPasswordSuccess("")
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Las contraseñas no coinciden")
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("La contraseña debe tener al menos 6 caracteres")
+      return
+    }
+
+    try {
+      await updatePassword(newPassword)
+      setPasswordSuccess("Contraseña actualizada correctamente")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (error: any) {
+      setPasswordError(error.message || "Error al actualizar la contraseña")
+    }
+  }
+
+  const handleCompanyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setCompanyLogo(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setCompanyLogoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAvatarFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleSaveCompanySettings = async () => {
+    setUploadingLogo(true)
+    try {
+      let logoUrl = companySettings?.company_logo_url || null
+      if (companyLogo) {
+        logoUrl = companyLogoPreview
+      }
+      await saveCompanySettings({
+        company_name: companyName,
+        company_logo_url: logoUrl || undefined,
+      })
+      setCompanyLogo(null)
+    } catch (error) {
+      console.error("Error saving company settings:", error)
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const handleSaveUserProfile = async () => {
+    setUploadingAvatar(true)
+    try {
+      let avatarUrl = userProfile?.avatar_url || null
+      if (avatarFile) {
+        avatarUrl = avatarPreview
+      }
+      await saveUserProfile({
+        full_name: fullName,
+        avatar_url: avatarUrl || undefined,
+      })
+      setAvatarFile(null)
+    } catch (error) {
+      console.error("Error saving user profile:", error)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleRegisterPayment = async (paymentData: {
+    budget_id: string
+    amount: number
+    payment_date: string
+    payment_method: string
+    reference_number: string
+    notes: string
+  }) => {
+    await registerBudgetPayment(paymentData)
+  }
+
+  const handleOpenPaymentDialog = (budgetId?: string) => {
+    setSelectedBudgetForPayment(budgetId)
+    setShowRegisterPaymentDialog(true)
+  }
+
+  // Handler para ver/editar un presupuesto
+  const handleViewBudget = (budget: any) => {
+    // Aquí puedes abrir un modal de edición o navegar a una página de edición
+    // Por ahora, mostramos una alerta con los detalles
+    const details = `
+Presupuesto #${budget.number}
+Cliente: ${budget.client_name}
+Proyecto: ${budget.project_name}
+Total: $${budget.total?.toLocaleString() || 0}
+Estado: ${budget.payment_status === 'paid' ? 'Pagado' : budget.payment_status === 'partial' ? 'Parcial' : 'Sin pagar'}
+    `.trim()
+    
+    // Opción: Abrir en una nueva pestaña para editar
+    const editUrl = `/budget-report?edit=${budget.id}`
+    if (confirm(`${details}\n\n¿Deseas editar este presupuesto?`)) {
+      window.open(editUrl, '_blank')
+    }
+  }
+
+  // Handler para reimprimir un presupuesto
+  const handlePrintBudget = (budget: any) => {
+    // Crear una ventana de impresión con los detalles del presupuesto
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Presupuesto #${budget.number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+          .company { font-size: 24px; font-weight: bold; }
+          .budget-info { text-align: right; }
+          .client-info { margin-bottom: 30px; }
+          .client-info h3 { margin-bottom: 10px; color: #666; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+          th { background-color: #f5f5f5; }
+          .total-row { font-weight: bold; font-size: 18px; background-color: #f0f0f0; }
+          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="company">${companySettings?.company_name || 'APEX CONSULTING'}</div>
+          <div class="budget-info">
+            <div>Presupuesto #${budget.number}</div>
+            <div>Fecha: ${new Date(budget.date).toLocaleDateString('es-ES')}</div>
+          </div>
+        </div>
+        <div class="client-info">
+          <h3>Cliente</h3>
+          <div><strong>${budget.client_name}</strong></div>
+          <div>Proyecto: ${budget.project_name}</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Descripción</th>
+              <th style="text-align: right;">Cantidad</th>
+              <th style="text-align: right;">Precio Unit.</th>
+              <th style="text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(budget.items || []).map((item: any) => `
+              <tr>
+                <td>${item.description || item.category || 'Servicio'}</td>
+                <td style="text-align: right;">${item.quantity || 1}</td>
+                <td style="text-align: right;">$${(item.rate || item.price || 0).toLocaleString()}</td>
+                <td style="text-align: right;">$${((item.quantity || 1) * (item.rate || item.price || 0)).toLocaleString()}</td>
+              </tr>
+            `).join('') || `
+              <tr>
+                <td>Servicios profesionales</td>
+                <td style="text-align: right;">1</td>
+                <td style="text-align: right;">$${budget.total?.toLocaleString() || 0}</td>
+                <td style="text-align: right;">$${budget.total?.toLocaleString() || 0}</td>
+              </tr>
+            `}
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="3" style="text-align: right;">TOTAL</td>
+              <td style="text-align: right;">$${budget.total?.toLocaleString() || 0}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="footer">
+          <p>Gracias por su confianza</p>
+          <p>${companySettings?.company_name || 'APEX CONSULTING'}</p>
+        </div>
+      </body>
+      </html>
+    `
+    
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.focus()
+      setTimeout(() => {
+        printWindow.print()
+      }, 250)
+    }
+  }
+
+  const getTabTitle = (tab: string) => {
+    switch (tab) {
+      case "dashboard":
+        return "Dashboard General"
+      case "budgets":
+        return "Gestión de Presupuestos"
+      case "clients":
+        return "Gestión de Clientes"
+      case "hours":
+        return "Control de Horas"
+      case "reports":
+        return "Reportes y Análisis"
+      case "settings":
+        return "Configuración del Sistema"
+      default:
+        return "Dashboard"
+    }
+  }
+
+  const getHoursByBudget = (budgetId: string) => {
+    return hourEntries
+      .filter((entry) => entry.budget_id === budgetId)
+      .reduce((sum, entry) => sum + (entry.hours || 0), 0)
+  }
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <DashboardCards budgets={budgets} clients={clients} hourEntries={hourEntries} />
+
+      case "budgets":
+        return (
+          <div className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => handleOpenPaymentDialog()} className="bg-green-600 hover:bg-green-700">
+                <DollarSignIcon className="h-4 w-4 mr-2" />
+                Registrar Pago
+              </Button>
             </div>
 
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#servicios" className="text-sm text-gray-400 hover:text-white transition-colors">
-                Servicios
-              </a>
-              <a href="#proyectos" className="text-sm text-gray-400 hover:text-white transition-colors">
-                Proyectos
-              </a>
-              <a href="#nosotros" className="text-sm text-gray-400 hover:text-white transition-colors">
-                Nosotros
-              </a>
-              <a href="#contacto" className="text-sm text-gray-400 hover:text-white transition-colors">
-                Contacto
-              </a>
-            </div>
-
-            <Button onClick={handleAccessSystem} className="bg-white text-black hover:bg-gray-200 rounded-full px-6">
-              {user ? "Ir al Dashboard" : "Acceso Interno"}
-              <Lock className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[120px]" />
-
-        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 animate-fade-up">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-sm text-gray-400">Transformando empresas desde 2014</span>
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 animate-fade-up animation-delay-100">
-            Soluciones Tecnológicas
-            <br />
-            <span className="gradient-text">de Alto Impacto</span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 animate-fade-up animation-delay-200">
-            Impulsamos la transformación digital de tu empresa con soluciones innovadoras y consultoría especializada en
-            tecnología.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up animation-delay-300">
-            <Button
-              size="lg"
-              className="bg-white text-black hover:bg-gray-200 rounded-full px-8 py-6 text-lg"
-              onClick={() => document.getElementById("contacto")?.scrollIntoView({ behavior: "smooth" })}
-            >
-              Iniciar Proyecto
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-full px-8 py-6 text-lg border-white/20 text-white hover:bg-white/10 bg-transparent"
-              onClick={() => document.getElementById("proyectos")?.scrollIntoView({ behavior: "smooth" })}
-            >
-              Ver Proyectos
-            </Button>
-          </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white/20 rounded-full flex items-start justify-center p-2">
-            <div className="w-1 h-2 bg-white/60 rounded-full" />
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section 
-        ref={statsSection.ref}
-        className="py-20 border-y border-white/10 overflow-hidden"
-      >
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div 
-                key={index} 
-                className={`text-center transition-all duration-700 ${
-                  statsSection.isInView 
-                    ? 'opacity-100 translate-y-0' 
-                    : 'opacity-0 translate-y-10'
-                }`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                  {stat.value}
+            <Card className="mb-6 border border-white/10 bg-white/5 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <FileTextIcon className="h-5 w-5 text-blue-400" />
+                  Filtrar Reporte de Deudas por Cliente
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Selecciona un cliente para ver únicamente sus deudas pendientes y presupuestos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <select
+                    value={selectedClientForDebtReport}
+                    onChange={(e) => setSelectedClientForDebtReport(e.target.value)}
+                    className="flex-1 p-3 rounded-lg border border-white/20 bg-[#1a1a2e] text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg [&>option]:bg-[#1a1a2e] [&>option]:text-white"
+                  >
+                    <option value="all">📊 Todos los clientes (Reporte General)</option>
+                    {clients.map((client) => {
+                      const clientBudgets = budgets.filter((b) => b.client_name === client.name)
+                      const totalDebt = clientBudgets.reduce((sum, b) => {
+                        const paid = (b as any).paid_amount || 0
+                        return sum + (b.total - paid)
+                      }, 0)
+                      return (
+                        <option key={client.id} value={client.id}>
+                          👤 {client.name} - Deuda: $
+                          {totalDebt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </option>
+                      )
+                    })}
+                  </select>
                 </div>
-                <div className="text-sm text-gray-500">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              </CardContent>
+            </Card>
 
-      {/* Services Section */}
-      <section 
-        id="servicios" 
-        ref={servicesSection.ref}
-        className="py-24 overflow-hidden"
-      >
-        <div className="max-w-7xl mx-auto px-6">
-          <div 
-            className={`text-center mb-16 transition-all duration-700 ${
-              servicesSection.isInView 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-10'
-            }`}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Nuestros Servicios</h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Ofrecemos soluciones integrales adaptadas a las necesidades específicas de cada cliente.
-            </p>
+            <DebtReport
+              budgets={budgets}
+              clients={clients}
+              invoices={invoices}
+              selectedClientId={selectedClientForDebtReport}
+              companyName={companySettings?.company_name || "APEX CONSULTING"}
+              companyLogoUrl={companySettings?.company_logo_url || null}
+              onRegisterPayment={handleOpenPaymentDialog}
+              onViewBudget={handleViewBudget}
+              onPrintBudget={handlePrintBudget}
+              budgetPayments={budgetPayments}
+              getPaymentsByBudget={getPaymentsByBudget}
+            />
           </div>
+        )
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {services.map((service, index) => (
-              <div
-                key={index}
-                className={`group p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-500 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/10 ${
-                  servicesSection.isInView 
-                    ? 'opacity-100 translate-y-0' 
-                    : 'opacity-0 translate-y-16'
-                }`}
-                style={{ transitionDelay: `${index * 100 + 200}ms` }}
-              >
-                <div className="w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center mb-4 group-hover:bg-blue-600/30 group-hover:scale-110 transition-all duration-300">
-                  <service.icon className="h-6 w-6 text-blue-400" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">{service.title}</h3>
-                <p className="text-sm text-gray-400">{service.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      case "clients":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Lista de Clientes</CardTitle>
+                <CardDescription>Administra tu base de clientes</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {clients.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No hay clientes registrados.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Horas Consumidas</TableHead>
+                        <TableHead className="w-[150px]">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {clients.map((client) => (
+                        <TableRow key={client.id}>
+                          <TableCell>
+                            {editingClient === client.id ? (
+                              <Input
+                                value={editClientName}
+                                onChange={(e) => setEditClientName(e.target.value)}
+                                placeholder="Nombre del cliente"
+                              />
+                            ) : (
+                              client.name
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editingClient === client.id ? (
+                              <Input
+                                value={editClientEmail}
+                                onChange={(e) => setEditClientEmail(e.target.value)}
+                                placeholder="Email del cliente"
+                              />
+                            ) : (
+                              client.email || "-"
+                            )}
+                          </TableCell>
+                          <TableCell>{client.consumed_hours || 0}</TableCell>
+                          <TableCell>
+                            {editingClient === client.id ? (
+                              <div className="flex items-center gap-2">
+                                <Button size="icon" variant="ghost" onClick={() => handleUpdateClient(client.id)}>
+                                  <SaveIcon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingClient(null)
+                                    setEditClientName("")
+                                    setEditClientEmail("")
+                                  }}
+                                >
+                                  <XIcon className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingClient(client.id)
+                                    setEditClientName(client.name)
+                                    setEditClientEmail(client.email || "")
+                                  }}
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="text-red-600"
+                                  onClick={() => handleDeleteClient(client.id)}
+                                >
+                                  <Trash2Icon className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
 
-      {/* Projects Section */}
-      <section 
-        id="proyectos" 
-        ref={projectsSection.ref}
-        className="py-24 bg-white/[0.02] overflow-hidden"
-      >
-        <div className="max-w-7xl mx-auto px-6">
-          <div 
-            className={`flex flex-col md:flex-row md:items-end md:justify-between mb-16 transition-all duration-700 ${
-              projectsSection.isInView 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-10'
-            }`}
-          >
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Proyectos Destacados</h2>
-              <p className="text-gray-400 max-w-xl">
-                Una selección de nuestros trabajos más recientes que demuestran nuestra capacidad de entrega.
-              </p>
-            </div>
-            <Button variant="ghost" className="text-gray-400 hover:text-white mt-4 md:mt-0">
-              Ver todos los proyectos
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project, index) => (
-              <div
-                key={index}
-                className={`group relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-white/20 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10 ${
-                  projectsSection.isInView 
-                    ? 'opacity-100 translate-y-0' 
-                    : 'opacity-0 translate-y-20'
-                }`}
-                style={{ transitionDelay: `${index * 150 + 200}ms` }}
-              >
-                <div className="aspect-[4/3] overflow-hidden">
-                  <img
-                    src={project.image || "/placeholder.svg"}
-                    alt={project.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            <Card>
+              <CardHeader>
+                <CardTitle>Agregar Cliente</CardTitle>
+                <CardDescription>Registra un nuevo cliente</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clientName">Nombre del Cliente</Label>
+                  <Input
+                    id="clientName"
+                    placeholder="Nombre del cliente"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
                   />
                 </div>
-                <div className="p-6">
-                  <div className="text-xs text-blue-400 font-medium mb-2">{project.category}</div>
-                  <h3 className="text-lg font-semibold mb-2">{project.title}</h3>
-                  <p className="text-sm text-gray-400 mb-4">{project.description}</p>
-                  <Button variant="ghost" size="sm" className="text-white/60 hover:text-white p-0">
-                    Ver caso de estudio
-                    <ExternalLink className="ml-2 h-3 w-3" />
+                <div className="space-y-2">
+                  <Label htmlFor="clientEmail">Email (Opcional)</Label>
+                  <Input
+                    id="clientEmail"
+                    type="email"
+                    placeholder="email@ejemplo.com"
+                    value={newClientEmail}
+                    onChange={(e) => setNewClientEmail(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button onClick={handleSaveClient} disabled={!newClientName.trim()} className="w-full">
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Agregar Cliente
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )
+
+      case "hours":
+        return (
+          <div className="space-y-6">
+            {/* Header with Add Hours Button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Control de Horas</h2>
+                <p className="text-gray-400">Registra y gestiona las horas asociadas a presupuestos</p>
+              </div>
+              <AddHoursDialog budgets={budgets} onSave={handleSaveHourEntry} />
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="border-l-4 border-l-blue-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Total Horas</p>
+                      <p className="text-2xl font-bold">
+                        {hourEntries.reduce((sum, e) => sum + Math.abs(e.hours || 0), 0).toFixed(1)}
+                      </p>
+                    </div>
+                    <ClockIcon className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-green-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Horas Sumadas</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        +
+                        {hourEntries
+                          .filter((e) => (e.hours || 0) > 0)
+                          .reduce((sum, e) => sum + (e.hours || 0), 0)
+                          .toFixed(1)}
+                      </p>
+                    </div>
+                    <TrendingUpIcon className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-red-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Horas Restadas</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {hourEntries
+                          .filter((e) => (e.hours || 0) < 0)
+                          .reduce((sum, e) => sum + (e.hours || 0), 0)
+                          .toFixed(1)}
+                      </p>
+                    </div>
+                    <TrendingDownIcon className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-purple-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Balance Neto</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {hourEntries.reduce((sum, e) => sum + (e.hours || 0), 0).toFixed(1)}
+                      </p>
+                    </div>
+                    <DollarSignIcon className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Hours Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Registro de Horas</CardTitle>
+                <CardDescription>Historial de horas trabajadas asociadas a presupuestos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {hourEntries.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ClockIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No hay registros de horas.</p>
+                    <p className="text-gray-400 text-sm">Usa el botón "Registrar Horas" para comenzar.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Presupuesto</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Horas</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead className="w-[100px]">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {hourEntries.map((entry) => (
+                        <TableRow
+                          key={entry.id}
+                          className={entry.paid ? "bg-green-500/10 opacity-75" : (entry.hours || 0) < 0 ? "bg-red-500/10" : ""}
+                        >
+                          <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
+                            {new Date(entry.date).toLocaleDateString("es-ES")}
+                          </TableCell>
+                          <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
+                            {entry.budget_name || "-"}
+                          </TableCell>
+                          <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
+                            {entry.client_name}
+                          </TableCell>
+                          <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
+                            {entry.description}
+                          </TableCell>
+                          <TableCell
+                            className={`text-right font-bold ${
+                              entry.paid
+                                ? "line-through text-gray-500"
+                                : (entry.hours || 0) > 0
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                            }`}
+                          >
+                            {(entry.hours || 0) > 0 ? "+" : ""}
+                            {entry.hours}
+                          </TableCell>
+                          <TableCell>
+                            {entry.paid ? (
+                              <Badge className="bg-green-500/20 text-green-300 border border-green-500/30">Pagado</Badge>
+                            ) : (entry.hours || 0) > 0 ? (
+                              <Badge className="bg-blue-500/20 text-blue-300 border border-blue-500/30">Sumado</Badge>
+                            ) : (
+                              <Badge className="bg-red-500/20 text-red-300 border border-red-500/30">Restado</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {entry.paid ? (
+                              <span className="text-green-400 text-sm">✓ Cerrado</span>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-500/20"
+                                  onClick={() => handleMarkHourAsPaid(entry.id)}
+                                  title="Marcar como pagado"
+                                >
+                                  <CheckCircleIcon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                                  onClick={() => handleDeleteHourEntry(entry.id)}
+                                  title="Eliminar"
+                                >
+                                  <Trash2Icon className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Hours by Budget Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumen por Presupuesto</CardTitle>
+                <CardDescription>Total de horas registradas por cada presupuesto</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {budgets.map((budget) => {
+                    const budgetHours = getHoursByBudget(budget.id)
+                    return (
+                      <div
+                        key={budget.id}
+                        className="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-semibold text-white">{budget.project_name}</p>
+                            <p className="text-sm text-gray-400">{budget.client_name}</p>
+                            <p className="text-xs text-gray-500">#{budget.number}</p>
+                          </div>
+                          <div className="text-right">
+                            <p
+                              className={`text-xl font-bold ${
+                                budgetHours > 0 ? "text-green-600" : budgetHours < 0 ? "text-red-600" : "text-gray-400"
+                              }`}
+                            >
+                              {budgetHours > 0 ? "+" : ""}
+                              {budgetHours.toFixed(1)}h
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+
+      case "reports":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Reportes Disponibles</CardTitle>
+                <CardDescription>Genera y descarga reportes de tu negocio</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Button
+                    variant="outline"
+                    className="h-24 flex flex-col items-center justify-center gap-2 bg-transparent"
+                  >
+                    <TrendingUpIcon className="h-6 w-6" />
+                    Reporte de Ingresos
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-24 flex flex-col items-center justify-center gap-2 bg-transparent"
+                  >
+                    <ClockIcon className="h-6 w-6" />
+                    Reporte de Horas
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-24 flex flex-col items-center justify-center gap-2 bg-transparent"
+                  >
+                    <FileTextIcon className="h-6 w-6" />
+                    Reporte de Presupuestos
                   </Button>
                 </div>
-              </div>
-            ))}
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      </section>
+        )
 
-      {/* About Section */}
-      <section 
-        id="nosotros" 
-        ref={aboutSection.ref}
-        className="py-24 overflow-hidden"
-      >
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div 
-              className={`transition-all duration-1000 ${
-                aboutSection.isInView 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-20'
-              }`}
-            >
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Un equipo comprometido con la excelencia</h2>
-              <p className="text-gray-400 mb-6">
-                En APEX CONSULTING combinamos experiencia técnica con visión estratégica para ofrecer soluciones que
-                realmente transforman negocios. Nuestro equipo multidisciplinario trabaja de la mano con cada cliente
-                para entender sus desafíos y diseñar la mejor ruta hacia el éxito.
-              </p>
-              <div className="grid grid-cols-2 gap-6">
-                <div 
-                  className={`flex items-start gap-3 transition-all duration-700 ${
-                    aboutSection.isInView 
-                      ? 'opacity-100 translate-y-0' 
-                      : 'opacity-0 translate-y-10'
-                  }`}
-                  style={{ transitionDelay: '300ms' }}
-                >
-                  <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-                    <Users className="h-5 w-5 text-blue-400" />
-                  </div>
-                  <div>
-                    <div className="font-medium mb-1">Equipo Experto</div>
-                    <div className="text-sm text-gray-500">Profesionales certificados</div>
+      case "settings":
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Configuración de Empresa */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración de Empresa</CardTitle>
+                <CardDescription>Personaliza los datos de tu empresa</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Nombre de la Empresa</Label>
+                  <Input
+                    id="companyName"
+                    placeholder="Nombre de tu empresa"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="companyLogo">Logo de la Empresa</Label>
+                  <div className="flex items-center gap-4">
+                    {companyLogoPreview && (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border">
+                        <img
+                          src={companyLogoPreview || "/placeholder.svg"}
+                          alt="Logo preview"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
+                    <Input id="companyLogo" type="file" accept="image/*" onChange={handleCompanyLogoChange} />
                   </div>
                 </div>
-                <div 
-                  className={`flex items-start gap-3 transition-all duration-700 ${
-                    aboutSection.isInView 
-                      ? 'opacity-100 translate-y-0' 
-                      : 'opacity-0 translate-y-10'
-                  }`}
-                  style={{ transitionDelay: '450ms' }}
+              </CardContent>
+              <CardFooter>
+                <Button onClick={handleSaveCompanySettings} disabled={uploadingLogo} className="w-full">
+                  <SaveIcon className="h-4 w-4 mr-2" />
+                  {uploadingLogo ? "Guardando..." : "Guardar Configuración"}
+                </Button>
+              </CardFooter>
+            </Card>
+
+            {/* Perfil de Usuario */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Perfil de Usuario</CardTitle>
+                <CardDescription>Actualiza tu información personal</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Nombre Completo</Label>
+                  <Input
+                    id="fullName"
+                    placeholder="Tu nombre completo"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="avatar">Foto de Perfil</Label>
+                  <div className="flex items-center gap-4">
+                    {avatarPreview && (
+                      <div className="w-16 h-16 rounded-full overflow-hidden border">
+                        <img
+                          src={avatarPreview || "/placeholder.svg"}
+                          alt="Avatar preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <Input id="avatar" type="file" accept="image/*" onChange={handleAvatarChange} />
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button onClick={handleSaveUserProfile} disabled={uploadingAvatar} className="w-full">
+                  <SaveIcon className="h-4 w-4 mr-2" />
+                  {uploadingAvatar ? "Guardando..." : "Guardar Perfil"}
+                </Button>
+              </CardFooter>
+            </Card>
+
+            {/* Cambio de Contraseña */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Cambiar Contraseña</CardTitle>
+                <CardDescription>Actualiza tu contraseña de acceso</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Contraseña Actual</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+                {passwordError && <p className="text-sm text-red-600">{passwordError}</p>}
+                {passwordSuccess && <p className="text-sm text-green-600">{passwordSuccess}</p>}
+              </CardContent>
+              <CardFooter>
+                <Button
+                  onClick={handlePasswordChange}
+                  disabled={!newPassword || !confirmPassword || currentPassword.length === 0}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-                    <BarChart3 className="h-5 w-5 text-blue-400" />
-                  </div>
-                  <div>
-                    <div className="font-medium mb-1">Resultados Medibles</div>
-                    <div className="text-sm text-gray-500">ROI garantizado</div>
-                  </div>
+                  Cambiar Contraseña
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando datos...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (dbError || !tablesExist) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] p-4">
+        <Card className="w-full max-w-2xl bg-[#12121a] border-white/10">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
+              <DatabaseIcon className="h-8 w-8 text-red-400" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-red-400">Base de Datos No Configurada</CardTitle>
+            <CardDescription className="text-gray-400">Las tablas de la base de datos no existen aún</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+              <div className="flex items-start">
+                <AlertTriangleIcon className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <p className="text-red-300 font-semibold mb-2">Error:</p>
+                  <p className="text-red-200 text-sm">{dbError}</p>
                 </div>
               </div>
             </div>
-            <div 
-              className={`relative transition-all duration-1000 ${
-                aboutSection.isInView 
-                  ? 'opacity-100 translate-x-0 scale-100' 
-                  : 'opacity-0 translate-x-20 scale-95'
-              }`}
-              style={{ transitionDelay: '200ms' }}
-            >
-              <div className="aspect-square rounded-2xl overflow-hidden group">
-                <img 
-                  src="/modern-office-team-meeting-dark-professional.jpg" 
-                  alt="Equipo APEX" 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                />
-              </div>
-              <div className="absolute -bottom-6 -left-6 w-48 h-48 bg-blue-600/30 rounded-2xl blur-2xl animate-pulse" />
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Contact Section */}
-      <section 
-        id="contacto" 
-        ref={contactSection.ref}
-        className="py-24 bg-white/[0.02] overflow-hidden"
-      >
-        <div 
-          className={`max-w-3xl mx-auto px-6 text-center transition-all duration-1000 ${
-            contactSection.isInView 
-              ? 'opacity-100 translate-y-0 scale-100' 
-              : 'opacity-0 translate-y-16 scale-95'
-          }`}
-        >
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">¿Listo para transformar tu negocio?</h2>
-          <p className="text-gray-400 mb-10">
-            Contáctanos hoy y descubre cómo podemos ayudarte a alcanzar tus objetivos tecnológicos.
-          </p>
-          <div 
-            className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-700 ${
-              contactSection.isInView 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-10'
-            }`}
-            style={{ transitionDelay: '300ms' }}
-          >
-            <Button size="lg" className="bg-white text-black hover:bg-gray-200 rounded-full px-8 hover:scale-105 transition-transform">
-              Agendar Reunión
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-full px-8 border-white/20 text-white hover:bg-white/10 bg-transparent hover:scale-105 transition-transform"
-            >
-              info@apexconsulting.com
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-black font-bold">A</span>
-              </div>
-              <span className="font-semibold">APEX CONSULTING</span>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-blue-300 mb-3">📋 Pasos para Configurar la Base de Datos:</h3>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-blue-200">
+                <li>
+                  Ve a tu proyecto de Supabase: <strong className="text-blue-100">https://supabase.com/dashboard</strong>
+                </li>
+                <li>
+                  Navega a <strong className="text-blue-100">SQL Editor</strong> en el menú lateral
+                </li>
+                <li>
+                  Ejecuta los scripts SQL que están en la carpeta <code className="bg-blue-500/20 px-1 rounded">scripts/</code>
+                </li>
+              </ol>
             </div>
 
-            <div className="flex items-center gap-6 text-sm text-gray-500">
-              <a href="#" className="hover:text-white transition-colors">
-                Privacidad
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
-                Términos
-              </a>
-              <span>© 2025 APEX CONSULTING</span>
+            <div className="mt-6 flex gap-3">
+              <Button onClick={checkTablesExist} className="flex-1">
+                <DatabaseIcon className="h-4 w-4 mr-2" />
+                Verificar Base de Datos
+              </Button>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
-            <Button variant="ghost" size="sm" onClick={handleAccessSystem} className="text-gray-500 hover:text-white">
-              <Lock className="mr-2 h-4 w-4" />
-              {user ? "Dashboard" : "Acceso Interno"}
-            </Button>
+  return (
+    <SidebarProvider>
+      <AppSidebar
+        budgetsCount={budgets.length}
+        clientsCount={clients.length}
+        hoursCount={hourEntries.length}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+      />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{getTabTitle(activeTab)}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="min-h-[100vh] flex-1 rounded-xl md:min-h-min">{renderTabContent()}</div>
         </div>
-      </footer>
-    </div>
+      </SidebarInset>
+      <RegisterPaymentDialog
+        open={showRegisterPaymentDialog}
+        onOpenChange={setShowRegisterPaymentDialog}
+        budgets={budgets}
+        selectedBudgetId={selectedBudgetForPayment}
+        onSave={handleRegisterPayment}
+      />
+    </SidebarProvider>
   )
 }
