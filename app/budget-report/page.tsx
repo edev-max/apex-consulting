@@ -129,10 +129,10 @@ export default function InteractiveBudgetReport() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 p-6 bg-gray-50 min-h-screen">
+    <div className="flex flex-col lg:flex-row gap-6 p-6 bg-[#0a0a0f] min-h-screen">
       {/* Input Form Section */}
-      <Card className="w-full lg:w-1/3 shadow-lg print:hidden">
-        <CardHeader className="pb-4 border-b">
+      <Card className="w-full lg:w-1/3 shadow-lg print:hidden border border-white/10 bg-white/5">
+        <CardHeader className="pb-4 border-b border-white/10">
           <div className="flex items-center gap-2 mb-2">
             <Link href="/dashboard">
               <Button variant="ghost" size="icon">
@@ -140,8 +140,8 @@ export default function InteractiveBudgetReport() {
               </Button>
             </Link>
             <div>
-              <CardTitle>Configurar Presupuesto</CardTitle>
-              <CardDescription>Ingresa los detalles del cliente y las líneas de presupuesto.</CardDescription>
+              <CardTitle className="text-white">Configurar Presupuesto</CardTitle>
+              <CardDescription className="text-gray-400">Ingresa los detalles del cliente y las líneas de presupuesto.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -186,7 +186,7 @@ export default function InteractiveBudgetReport() {
             />
           </div>
 
-          <h3 className="text-lg font-semibold mt-6 mb-3">Añadir Ítem al Presupuesto</h3>
+          <h3 className="text-lg font-semibold mt-6 mb-3 text-white">Añadir Ítem al Presupuesto</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="newItemCategory">Categoría</Label>
@@ -254,8 +254,8 @@ export default function InteractiveBudgetReport() {
       </Card>
 
       {/* Report Display Section */}
-      <Card className="w-full lg:w-2/3 shadow-lg print:shadow-none print:border-none">
-        <CardHeader className="pb-4 border-b">
+      <Card className="w-full lg:w-2/3 shadow-lg print:shadow-none print:border-none border border-white/10 bg-white/5">
+        <CardHeader className="pb-4 border-b border-white/10">
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
               {settings?.company_logo_url && (
@@ -266,67 +266,67 @@ export default function InteractiveBudgetReport() {
                 />
               )}
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 print-company-name">
+                <h1 className="text-3xl font-bold text-white print-company-name">
                   {settings?.company_name || "APEX CONSULTING"}
                 </h1>
-                <CardTitle className="mt-2 text-2xl">Presupuesto</CardTitle>
-                <CardDescription className="text-sm text-gray-600">
+                <CardTitle className="mt-2 text-2xl text-white">Presupuesto</CardTitle>
+                <CardDescription className="text-sm text-gray-400">
                   Presupuesto detallado para el desarrollo de sistemas
                 </CardDescription>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-600">Fecha: {new Date().toLocaleDateString("es-ES")}</p>
-              <p className="text-sm text-gray-600">Presupuesto #: {reportNumber.toString().padStart(4, "0")}</p>
+              <p className="text-sm text-gray-400">Fecha: {new Date().toLocaleDateString("es-ES")}</p>
+              <p className="text-sm text-gray-400">Presupuesto #: {reportNumber.toString().padStart(4, "0")}</p>
             </div>
           </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
-              <h3 className="text-lg font-semibold mb-2">Detalles del Proyecto</h3>
-              <p className="text-sm text-gray-700">
-                <strong>Nombre del Proyecto:</strong> {projectName || "[Nombre del Proyecto]"}
+              <h3 className="text-lg font-semibold mb-2 text-white">Detalles del Proyecto</h3>
+              <p className="text-sm text-gray-300">
+                <strong className="text-white">Nombre del Proyecto:</strong> {projectName || "[Nombre del Proyecto]"}
               </p>
-              <p className="text-sm text-gray-700">
-                <strong>Cliente:</strong> {clientName || "[Nombre del Cliente]"}
+              <p className="text-sm text-gray-300">
+                <strong className="text-white">Cliente:</strong> {clientName || "[Nombre del Cliente]"}
               </p>
-              <p className="text-sm text-gray-700">
-                <strong>Descripción:</strong> {projectDescription || "[Descripción del proyecto]"}
+              <p className="text-sm text-gray-300">
+                <strong className="text-white">Descripción:</strong> {projectDescription || "[Descripción del proyecto]"}
               </p>
             </div>
           </div>
 
           <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-3">Desglose del Presupuesto</h3>
+            <h3 className="text-lg font-semibold mb-3 text-white">Desglose del Presupuesto</h3>
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-100">
-                  <TableHead className="w-[150px]">Categoría</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead className="text-right">Cantidad</TableHead>
-                  <TableHead className="text-right">Tarifa/Unidad</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                <TableRow className="bg-white/5 border-white/10">
+                  <TableHead className="w-[150px] text-gray-300">Categoría</TableHead>
+                  <TableHead className="text-gray-300">Descripción</TableHead>
+                  <TableHead className="text-right text-gray-300">Cantidad</TableHead>
+                  <TableHead className="text-right text-gray-300">Tarifa/Unidad</TableHead>
+                  <TableHead className="text-right text-gray-300">Total</TableHead>
                   <TableHead className="w-[50px] print:hidden"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {budgetItems.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-gray-500">
+                  <TableRow className="border-white/10">
+                    <TableCell colSpan={6} className="text-center text-gray-400">
                       No hay ítems en el presupuesto.
                     </TableCell>
                   </TableRow>
                 ) : (
                   budgetItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.category}</TableCell>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell className="text-right">
+                    <TableRow key={item.id} className="border-white/10 hover:bg-white/5">
+                      <TableCell className="font-medium text-white">{item.category}</TableCell>
+                      <TableCell className="text-gray-300">{item.description}</TableCell>
+                      <TableCell className="text-right text-gray-300">
                         {item.quantity} {item.unit}
                       </TableCell>
-                      <TableCell className="text-right">${item.rate.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">${(item.quantity * item.rate).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-gray-300">${item.rate.toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-white font-medium">${(item.quantity * item.rate).toFixed(2)}</TableCell>
                       <TableCell className="text-center print:hidden">
                         <Button
                           variant="ghost"
@@ -344,15 +344,15 @@ export default function InteractiveBudgetReport() {
             </Table>
           </div>
 
-          <div className="flex justify-end mt-6 pt-4 border-t">
+          <div className="flex justify-end mt-6 pt-4 border-t border-white/10">
             <div className="text-right">
-              <p className="text-xl font-bold text-gray-800">
-                Presupuesto Total: <span className="text-green-600">${totalBudget.toFixed(2)}</span>
+              <p className="text-xl font-bold text-white">
+                Presupuesto Total: <span className="text-green-400">${totalBudget.toFixed(2)}</span>
               </p>
             </div>
           </div>
 
-          <div className="mt-8 text-center text-sm text-gray-500 print:hidden">
+          <div className="mt-8 text-center text-sm text-gray-400 print:hidden">
             <p>
               Para imprimir este presupuesto, haz clic en el botón "Imprimir" o usa la función de impresión de tu
               navegador (Ctrl+P o Cmd+P) y selecciona "Guardar como PDF".
