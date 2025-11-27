@@ -108,15 +108,15 @@ export function RegisterPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] bg-[#1a1a2e] border border-white/10">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <div className="p-2 rounded-lg bg-green-100">
-              <DollarSignIcon className="h-5 w-5 text-green-600" />
+          <DialogTitle className="flex items-center gap-2 text-xl text-white">
+            <div className="p-2 rounded-lg bg-green-500/20">
+              <DollarSignIcon className="h-5 w-5 text-green-400" />
             </div>
             Registrar Pago
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-gray-400">
             Registra un pago recibido para un presupuesto. Puedes registrar pagos parciales o completos.
           </DialogDescription>
         </DialogHeader>
@@ -124,8 +124,8 @@ export function RegisterPaymentDialog({
         <div className="grid gap-5 py-4">
           {/* Selección de presupuesto */}
           <div className="space-y-2">
-            <Label htmlFor="budget" className="flex items-center gap-2">
-              <FileTextIcon className="h-4 w-4 text-gray-500" />
+            <Label htmlFor="budget" className="flex items-center gap-2 text-gray-300">
+              <FileTextIcon className="h-4 w-4 text-gray-400" />
               Presupuesto
             </Label>
             <Select value={budgetId} onValueChange={setBudgetId}>
@@ -141,7 +141,7 @@ export function RegisterPaymentDialog({
                         <span className="font-medium">
                           #{budget.number} - {budget.project_name}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           {budget.client_name} | Pendiente: ${pending.toLocaleString()}
                         </span>
                       </div>
@@ -154,21 +154,21 @@ export function RegisterPaymentDialog({
 
           {/* Info del presupuesto seleccionado */}
           {selectedBudget && (
-            <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200">
+            <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30">
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
-                  <p className="text-gray-500">Total</p>
-                  <p className="font-bold text-lg">${Number(selectedBudget.total).toLocaleString()}</p>
+                  <p className="text-gray-400">Total</p>
+                  <p className="font-bold text-lg text-white">${Number(selectedBudget.total).toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Pagado</p>
-                  <p className="font-bold text-lg text-green-600">
+                  <p className="text-gray-400">Pagado</p>
+                  <p className="font-bold text-lg text-green-400">
                     ${Number(selectedBudget.paid_amount || 0).toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Pendiente</p>
-                  <p className="font-bold text-lg text-orange-600">${pendingAmount.toLocaleString()}</p>
+                  <p className="text-gray-400">Pendiente</p>
+                  <p className="font-bold text-lg text-orange-400">${pendingAmount.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -176,13 +176,13 @@ export function RegisterPaymentDialog({
 
           {/* Monto */}
           <div className="space-y-2">
-            <Label htmlFor="amount" className="flex items-center gap-2">
-              <DollarSignIcon className="h-4 w-4 text-gray-500" />
+            <Label htmlFor="amount" className="flex items-center gap-2 text-gray-300">
+              <DollarSignIcon className="h-4 w-4 text-gray-400" />
               Monto del Pago
             </Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                 <Input
                   id="amount"
                   type="number"
@@ -210,8 +210,8 @@ export function RegisterPaymentDialog({
 
           {/* Fecha de pago */}
           <div className="space-y-2">
-            <Label htmlFor="paymentDate" className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4 text-gray-500" />
+            <Label htmlFor="paymentDate" className="flex items-center gap-2 text-gray-300">
+              <CalendarIcon className="h-4 w-4 text-gray-400" />
               Fecha del Pago
             </Label>
             <Input
@@ -225,8 +225,8 @@ export function RegisterPaymentDialog({
 
           {/* Método de pago */}
           <div className="space-y-2">
-            <Label htmlFor="paymentMethod" className="flex items-center gap-2">
-              <CreditCardIcon className="h-4 w-4 text-gray-500" />
+            <Label htmlFor="paymentMethod" className="flex items-center gap-2 text-gray-300">
+              <CreditCardIcon className="h-4 w-4 text-gray-400" />
               Método de Pago
             </Label>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
@@ -247,7 +247,7 @@ export function RegisterPaymentDialog({
 
           {/* Número de referencia */}
           <div className="space-y-2">
-            <Label htmlFor="reference">Número de Referencia (opcional)</Label>
+            <Label htmlFor="reference" className="text-gray-300">Número de Referencia (opcional)</Label>
             <Input
               id="reference"
               value={referenceNumber}
@@ -259,7 +259,7 @@ export function RegisterPaymentDialog({
 
           {/* Notas */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notas (opcional)</Label>
+            <Label htmlFor="notes" className="text-gray-300">Notas (opcional)</Label>
             <Textarea
               id="notes"
               value={notes}

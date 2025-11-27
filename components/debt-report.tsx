@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   CheckCircleIcon,
   DollarSignIcon,
+  Eye,
+  Pencil,
 } from "lucide-react"
 import {
   BarChart,
@@ -76,6 +78,8 @@ interface DebtReportProps {
   companyName?: string
   companyLogoUrl?: string | null
   onRegisterPayment?: (budgetId?: string) => void
+  onViewBudget?: (budget: Budget) => void
+  onPrintBudget?: (budget: Budget) => void
   budgetPayments?: any[] // Assuming this is an array of payment objects
   getPaymentsByBudget?: (budgetId: string) => any[]
 }
@@ -88,6 +92,8 @@ export function DebtReport({
   companyName = "APEX CONSULTING",
   companyLogoUrl,
   onRegisterPayment,
+  onViewBudget,
+  onPrintBudget,
   budgetPayments = [], // Default value for budgetPayments
   getPaymentsByBudget,
 }: DebtReportProps) {
@@ -720,33 +726,33 @@ export function DebtReport({
           </Button>
         </div>
 
-        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white shadow-lg">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm shadow-lg">
           <CardHeader>
-            <CardTitle className="text-3xl text-blue-900">{selectedClientData.clientName}</CardTitle>
-            <CardDescription>Presupuestos con saldo pendiente de pago</CardDescription>
+            <CardTitle className="text-3xl text-white">{selectedClientData.clientName}</CardTitle>
+            <CardDescription className="text-gray-400">Presupuestos con saldo pendiente de pago</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-lg p-4 border-l-4 border-l-blue-500 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Total Presupuestado</div>
-                <div className="text-2xl font-bold text-blue-600">
+              <div className="bg-white/5 rounded-lg p-4 border-l-4 border-l-blue-500">
+                <div className="text-sm text-gray-400 mb-1">Total Presupuestado</div>
+                <div className="text-2xl font-bold text-blue-400">
                   ${selectedClientData.totalBudgets.toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   {selectedClientData.budgetCount} presupuestos pendientes
                 </div>
               </div>
-              <div className="bg-white rounded-lg p-4 border-l-4 border-l-green-500 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Total Pagado</div>
-                <div className="text-2xl font-bold text-green-600">
+              <div className="bg-white/5 rounded-lg p-4 border-l-4 border-l-green-500">
+                <div className="text-sm text-gray-400 mb-1">Total Pagado</div>
+                <div className="text-2xl font-bold text-green-400">
                   ${selectedClientData.totalPaid.toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Pagos recibidos</div>
               </div>
-              <div className="bg-white rounded-lg p-4 border-l-4 border-l-orange-500 shadow-sm">
-                <div className="text-sm text-gray-600 mb-1">Deuda Pendiente</div>
+              <div className="bg-white/5 rounded-lg p-4 border-l-4 border-l-orange-500">
+                <div className="text-sm text-gray-400 mb-1">Deuda Pendiente</div>
                 <div
-                  className={`text-2xl font-bold ${selectedClientData.pendingDebt > 0 ? "text-orange-600" : "text-green-600"}`}
+                  className={`text-2xl font-bold ${selectedClientData.pendingDebt > 0 ? "text-orange-400" : "text-green-400"}`}
                 >
                   ${selectedClientData.pendingDebt.toLocaleString()}
                 </div>
@@ -759,26 +765,27 @@ export function DebtReport({
         </Card>
 
         {selectedClientData.budgetCount > 0 ? (
-          <Card>
+          <Card className="border border-white/10 bg-white/5">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-white">
+                <FileText className="h-5 w-5 text-blue-400" />
                 Presupuestos con Saldo Pendiente ({selectedClientData.budgetCount})
               </CardTitle>
-              <CardDescription>Solo presupuestos que aún tienen montos por cobrar</CardDescription>
+              <CardDescription className="text-gray-400">Solo presupuestos que aún tienen montos por cobrar</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
+              <div className="rounded-md border border-white/10">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Número</TableHead>
-                      <TableHead className="font-semibold">Proyecto</TableHead>
-                      <TableHead className="font-semibold">Fecha</TableHead>
-                      <TableHead className="text-right font-semibold">Total</TableHead>
-                      <TableHead className="text-right font-semibold">Pagado</TableHead>
-                      <TableHead className="text-right font-semibold">Pendiente</TableHead>
-                      <TableHead className="text-center font-semibold">Estado</TableHead>
+                    <TableRow className="bg-white/5 border-white/10">
+                      <TableHead className="font-semibold text-gray-300">Número</TableHead>
+                      <TableHead className="font-semibold text-gray-300">Proyecto</TableHead>
+                      <TableHead className="font-semibold text-gray-300">Fecha</TableHead>
+                      <TableHead className="text-right font-semibold text-gray-300">Total</TableHead>
+                      <TableHead className="text-right font-semibold text-gray-300">Pagado</TableHead>
+                      <TableHead className="text-right font-semibold text-gray-300">Pendiente</TableHead>
+                      <TableHead className="text-center font-semibold text-gray-300">Estado</TableHead>
+                      <TableHead className="text-center font-semibold text-gray-300">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -788,25 +795,61 @@ export function DebtReport({
                       const pendingAmount = totalAmount - paidAmount
 
                       return (
-                        <TableRow key={budget.id} className="hover:bg-muted/50 transition-colors">
-                          <TableCell className="font-medium">#{budget.number}</TableCell>
-                          <TableCell>{budget.project_name}</TableCell>
-                          <TableCell>{new Date(budget.date).toLocaleDateString("es-ES")}</TableCell>
-                          <TableCell className="text-right font-mono">${totalAmount.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-mono text-green-600">
+                        <TableRow key={budget.id} className="hover:bg-white/5 transition-colors border-white/10">
+                          <TableCell className="font-medium text-white">#{budget.number}</TableCell>
+                          <TableCell className="text-gray-300">{budget.project_name}</TableCell>
+                          <TableCell className="text-gray-300">{new Date(budget.date).toLocaleDateString("es-ES")}</TableCell>
+                          <TableCell className="text-right font-mono text-white">${totalAmount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-mono text-green-400">
                             ${paidAmount.toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-orange-600 font-semibold">
+                          <TableCell className="text-right font-mono text-orange-400 font-semibold">
                             ${pendingAmount.toLocaleString()}
                           </TableCell>
                           <TableCell className="text-center">
                             {paidAmount >= totalAmount ? (
-                              <Badge className="bg-green-500 hover:bg-green-600">Pagado</Badge>
+                              <Badge className="bg-green-500/20 text-green-300 border border-green-500/30">Pagado</Badge>
                             ) : paidAmount > 0 ? (
-                              <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Parcial</Badge>
+                              <Badge className="bg-orange-500/20 text-orange-300 border border-orange-500/30">Parcial</Badge>
                             ) : (
-                              <Badge variant="destructive">Sin pagar</Badge>
+                              <Badge className="bg-red-500/20 text-red-300 border border-red-500/30">Sin pagar</Badge>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              {onViewBudget && (
+                                <Button
+                                  onClick={() => onViewBudget(budget)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                                  title="Ver/Editar"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {onPrintBudget && (
+                                <Button
+                                  onClick={() => onPrintBudget(budget)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
+                                  title="Reimprimir"
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {pendingAmount > 0 && onRegisterPayment && (
+                                <Button
+                                  onClick={() => onRegisterPayment(budget.id)}
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white h-8 px-2"
+                                >
+                                  <DollarSignIcon className="h-4 w-4 mr-1" />
+                                  Pagar
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -817,11 +860,11 @@ export function DebtReport({
             </CardContent>
           </Card>
         ) : (
-          <Card>
+          <Card className="border border-white/10 bg-white/5">
             <CardContent className="text-center py-12">
-              <CheckCircleIcon className="h-16 w-16 mx-auto mb-4 text-green-500" />
-              <h3 className="text-xl font-semibold text-green-600 mb-2">¡Todo al día!</h3>
-              <p className="text-muted-foreground">
+              <CheckCircleIcon className="h-16 w-16 mx-auto mb-4 text-green-400" />
+              <h3 className="text-xl font-semibold text-green-400 mb-2">¡Todo al día!</h3>
+              <p className="text-gray-400">
                 Este cliente no tiene presupuestos pendientes de pago. Todos sus presupuestos han sido pagados en su
                 totalidad.
               </p>
@@ -830,25 +873,25 @@ export function DebtReport({
         )}
 
         {selectedClientData.invoiceCount > 0 && (
-          <Card>
+          <Card className="border border-white/10 bg-white/5">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-white">
+                <DollarSign className="h-5 w-5 text-green-400" />
                 Facturas Emitidas ({selectedClientData.invoiceCount})
               </CardTitle>
-              <CardDescription>Lista completa de facturas</CardDescription>
+              <CardDescription className="text-gray-400">Lista completa de facturas</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
+              <div className="rounded-md border border-white/10">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Número</TableHead>
-                      <TableHead className="font-semibold">Fecha</TableHead>
-                      <TableHead className="text-right font-semibold">Total</TableHead>
-                      <TableHead className="text-right font-semibold">Pagado</TableHead>
-                      <TableHead className="text-right font-semibold">Pendiente</TableHead>
-                      <TableHead className="text-center font-semibold">Estado</TableHead>
+                    <TableRow className="bg-white/5 border-white/10">
+                      <TableHead className="font-semibold text-gray-300">Número</TableHead>
+                      <TableHead className="font-semibold text-gray-300">Fecha</TableHead>
+                      <TableHead className="text-right font-semibold text-gray-300">Total</TableHead>
+                      <TableHead className="text-right font-semibold text-gray-300">Pagado</TableHead>
+                      <TableHead className="text-right font-semibold text-gray-300">Pendiente</TableHead>
+                      <TableHead className="text-center font-semibold text-gray-300">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -858,25 +901,25 @@ export function DebtReport({
                       const pendingAmount = totalAmount - paidAmount
 
                       return (
-                        <TableRow key={invoice.id} className="hover:bg-muted/50 transition-colors">
-                          <TableCell className="font-medium">#{invoice.number}</TableCell>
-                          <TableCell>{new Date(invoice.date).toLocaleDateString("es-ES")}</TableCell>
-                          <TableCell className="text-right font-mono">${totalAmount.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-mono text-green-600">
+                        <TableRow key={invoice.id} className="hover:bg-white/5 transition-colors border-white/10">
+                          <TableCell className="font-medium text-white">#{invoice.number}</TableCell>
+                          <TableCell className="text-gray-300">{new Date(invoice.date).toLocaleDateString("es-ES")}</TableCell>
+                          <TableCell className="text-right font-mono text-white">${totalAmount.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-mono text-green-400">
                             ${paidAmount.toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            <span className={pendingAmount > 0 ? "text-orange-600" : "text-green-600"}>
+                            <span className={pendingAmount > 0 ? "text-orange-400" : "text-green-400"}>
                               ${pendingAmount.toLocaleString()}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
                             {paidAmount >= totalAmount ? (
-                              <Badge className="bg-green-500 hover:bg-green-600">Pagado</Badge>
+                              <Badge className="bg-green-500/20 text-green-300 border border-green-500/30">Pagado</Badge>
                             ) : paidAmount > 0 ? (
-                              <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Parcial</Badge>
+                              <Badge className="bg-orange-500/20 text-orange-300 border border-orange-500/30">Parcial</Badge>
                             ) : (
-                              <Badge variant="destructive">Sin pagar</Badge>
+                              <Badge className="bg-red-500/20 text-red-300 border border-red-500/30">Sin pagar</Badge>
                             )}
                           </TableCell>
                         </TableRow>
@@ -890,13 +933,13 @@ export function DebtReport({
         )}
 
         {getPaymentsByBudget && (
-          <Card className="border-2 border-blue-200 shadow-lg">
+          <Card className="border border-white/10 bg-white/5 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSignIcon className="h-5 w-5 text-green-600" />
+              <CardTitle className="flex items-center gap-2 text-white">
+                <DollarSignIcon className="h-5 w-5 text-green-400" />
                 Historial de Pagos
               </CardTitle>
-              <CardDescription>Pagos registrados para los presupuestos pendientes de este cliente</CardDescription>
+              <CardDescription className="text-gray-400">Pagos registrados para los presupuestos pendientes de este cliente</CardDescription>
             </CardHeader>
             <CardContent>
               {(() => {
@@ -910,43 +953,43 @@ export function DebtReport({
                 })
 
                 if (clientPayments.length === 0) {
-                  return <p className="text-gray-500 text-center py-4">No hay pagos registrados</p>
+                  return <p className="text-gray-400 text-center py-4">No hay pagos registrados</p>
                 }
 
                 return (
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-green-50">
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Presupuesto</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead>Referencia</TableHead>
-                        <TableHead className="text-right">Monto</TableHead>
+                      <TableRow className="bg-green-500/10 border-white/10">
+                        <TableHead className="text-gray-300">Fecha</TableHead>
+                        <TableHead className="text-gray-300">Presupuesto</TableHead>
+                        <TableHead className="text-gray-300">Método</TableHead>
+                        <TableHead className="text-gray-300">Referencia</TableHead>
+                        <TableHead className="text-right text-gray-300">Monto</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {clientPayments
                         .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
                         .map((payment) => (
-                          <TableRow key={payment.id}>
-                            <TableCell>{new Date(payment.payment_date).toLocaleDateString("es-ES")}</TableCell>
-                            <TableCell>
+                          <TableRow key={payment.id} className="border-white/10">
+                            <TableCell className="text-gray-300">{new Date(payment.payment_date).toLocaleDateString("es-ES")}</TableCell>
+                            <TableCell className="text-white">
                               #{payment.budget_number} - {payment.project_name}
                             </TableCell>
-                            <TableCell>{getPaymentMethodLabel(payment.payment_method)}</TableCell>
-                            <TableCell>{payment.reference_number || "-"}</TableCell>
-                            <TableCell className="text-right font-bold text-green-600">
+                            <TableCell className="text-gray-300">{getPaymentMethodLabel(payment.payment_method)}</TableCell>
+                            <TableCell className="text-gray-400">{payment.reference_number || "-"}</TableCell>
+                            <TableCell className="text-right font-bold text-green-400">
                               ${Number(payment.amount).toLocaleString()}
                             </TableCell>
                           </TableRow>
                         ))}
                     </TableBody>
                     <TableFooter>
-                      <TableRow className="bg-green-100">
-                        <TableCell colSpan={4} className="text-right font-bold">
+                      <TableRow className="bg-green-500/20 border-white/10">
+                        <TableCell colSpan={4} className="text-right font-bold text-white">
                           Total Pagado:
                         </TableCell>
-                        <TableCell className="text-right font-bold text-green-700 text-lg">
+                        <TableCell className="text-right font-bold text-green-400 text-lg">
                           ${clientPayments.reduce((sum, p) => sum + Number(p.amount), 0).toLocaleString()}
                         </TableCell>
                       </TableRow>
@@ -964,72 +1007,73 @@ export function DebtReport({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-blue-500">
+        <Card className="border-l-4 border-l-blue-500 border border-white/10 bg-white/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Presupuestado</CardTitle>
-            <FileText className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium text-gray-300">Total Presupuestado</CardTitle>
+            <FileText className="h-4 w-4 text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">${totalBudgeted.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="text-2xl font-bold text-blue-400">${totalBudgeted.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 mt-1">
               {clientDebts.reduce((sum, c) => sum + c.budgetCount, 0)} presupuestos
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-green-500">
+        <Card className="border-l-4 border-l-green-500 border border-white/10 bg-white/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Pagado</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium text-gray-300">Total Pagado</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">${totalPaid.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">Pagos recibidos</p>
+            <div className="text-2xl font-bold text-green-400">${totalPaid.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 mt-1">Pagos recibidos</p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-orange-500">
+        <Card className="border-l-4 border-l-orange-500 border border-white/10 bg-white/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Deuda Pendiente</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-sm font-medium text-gray-300">Deuda Pendiente</CardTitle>
+            <TrendingUp className="h-4 w-4 text-orange-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">${totalPendingDebt.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="text-2xl font-bold text-orange-400">${totalPendingDebt.toLocaleString()}</div>
+            <p className="text-xs text-gray-500 mt-1">
               {clientDebts.filter((c) => c.pendingDebt > 0).length} clientes con deuda
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
+        <Card className="border-l-4 border-l-purple-500 border border-white/10 bg-white/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tasa de Cobro</CardTitle>
-            <BarChart3 className="h-4 w-4 text-purple-500" />
+            <CardTitle className="text-sm font-medium text-gray-300">Tasa de Cobro</CardTitle>
+            <BarChart3 className="h-4 w-4 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{collectionRate}%</div>
-            <p className="text-xs text-muted-foreground mt-1">Del total presupuestado</p>
+            <div className="text-2xl font-bold text-purple-400">{collectionRate}%</div>
+            <p className="text-xs text-gray-500 mt-1">Del total presupuestado</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="border border-white/10 bg-white/5">
           <CardHeader>
-            <CardTitle>Top 10 Clientes - Desglose Financiero</CardTitle>
-            <CardDescription>Comparación de presupuestos, pagos y deudas pendientes</CardDescription>
+            <CardTitle className="text-white">Top 10 Clientes - Desglose Financiero</CardTitle>
+            <CardDescription className="text-gray-400">Comparación de presupuestos, pagos y deudas pendientes</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} fontSize={12} />
-                <YAxis />
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} fontSize={12} tick={{ fill: '#9ca3af' }} />
+                <YAxis tick={{ fill: '#9ca3af' }} />
                 <Tooltip
                   formatter={(value) => [`$${Number(value).toLocaleString()}`, ""]}
-                  contentStyle={{ backgroundColor: "rgba(255, 255, 255, 0.95)", border: "1px solid #ccc" }}
+                  contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", color: "#fff" }}
+                  labelStyle={{ color: "#fff" }}
                 />
-                <Legend />
+                <Legend wrapperStyle={{ color: "#9ca3af" }} />
                 <Bar dataKey="Presupuestado" fill="#3b82f6" />
                 <Bar dataKey="Pagado" fill="#10b981" />
                 <Bar dataKey="Pendiente" fill="#f97316" />
@@ -1038,10 +1082,10 @@ export function DebtReport({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-white/10 bg-white/5">
           <CardHeader>
-            <CardTitle>Distribución por Estado de Pago</CardTitle>
-            <CardDescription>Clientes según su estado de cuenta</CardDescription>
+            <CardTitle className="text-white">Distribución por Estado de Pago</CardTitle>
+            <CardDescription className="text-gray-400">Clientes según su estado de cuenta</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
@@ -1060,16 +1104,16 @@ export function DebtReport({
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", color: "#fff" }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="mt-4 grid grid-cols-3 gap-4 text-center">
               {statusDistribution.map((status, index) => (
-                <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="p-3 bg-white/5 rounded-lg border border-white/10">
                   <div className="text-2xl font-bold" style={{ color: status.color }}>
                     {status.value}
                   </div>
-                  <div className="text-xs text-muted-foreground">{status.name}</div>
+                  <div className="text-xs text-gray-400">{status.name}</div>
                 </div>
               ))}
             </div>
@@ -1077,18 +1121,18 @@ export function DebtReport({
         </Card>
       </div>
 
-      <Card>
+      <Card className="border border-white/10 bg-white/5">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Users className="h-5 w-5 text-blue-400" />
                 Detalle por Cliente
               </CardTitle>
-              <CardDescription>Desglose completo de presupuestos y pagos por cliente</CardDescription>
+              <CardDescription className="text-gray-400">Desglose completo de presupuestos y pagos por cliente</CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button onClick={exportToCSV} variant="outline" size="sm">
+              <Button onClick={exportToCSV} variant="outline" size="sm" className="border-white/20 text-gray-300 hover:bg-white/10">
                 <Download className="h-4 w-4 mr-2" />
                 CSV
               </Button>
@@ -1100,51 +1144,51 @@ export function DebtReport({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border border-white/10">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">Cliente</TableHead>
-                  <TableHead className="text-right font-semibold">Presupuestado</TableHead>
-                  <TableHead className="text-right font-semibold">Pagado</TableHead>
-                  <TableHead className="text-right font-semibold">Pendiente</TableHead>
-                  <TableHead className="text-center font-semibold">Docs</TableHead>
-                  <TableHead className="text-center font-semibold">Estado</TableHead>
-                  <TableHead className="text-center font-semibold">Acciones</TableHead>
+                <TableRow className="bg-white/5 border-white/10">
+                  <TableHead className="font-semibold text-gray-300">Cliente</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-300">Presupuestado</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-300">Pagado</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-300">Pendiente</TableHead>
+                  <TableHead className="text-center font-semibold text-gray-300">Docs</TableHead>
+                  <TableHead className="text-center font-semibold text-gray-300">Estado</TableHead>
+                  <TableHead className="text-center font-semibold text-gray-300">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {clientDebts.map((client, index) => (
-                  <TableRow key={index} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="font-medium">{client.clientName}</TableCell>
-                    <TableCell className="text-right font-mono">${client.totalBudgets.toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-mono text-green-600">
+                  <TableRow key={index} className="hover:bg-white/5 transition-colors border-white/10">
+                    <TableCell className="font-medium text-white">{client.clientName}</TableCell>
+                    <TableCell className="text-right font-mono text-white">${client.totalBudgets.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-mono text-green-400">
                       ${client.totalPaid.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       <span
-                        className={`font-semibold ${client.pendingDebt > 0 ? "text-orange-600" : "text-green-600"}`}
+                        className={`font-semibold ${client.pendingDebt > 0 ? "text-orange-400" : "text-green-400"}`}
                       >
                         ${client.pendingDebt.toLocaleString()}
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-medium border border-blue-500/30">
                           {client.budgetCount} P
                         </span>
-                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">
+                        <span className="bg-green-500/20 text-green-300 px-2 py-0.5 rounded font-medium border border-green-500/30">
                           {client.invoiceCount} F
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
                       {client.pendingDebt === 0 ? (
-                        <Badge className="bg-green-500 hover:bg-green-600">Pagado</Badge>
+                        <Badge className="bg-green-500/20 text-green-300 border border-green-500/30">Pagado</Badge>
                       ) : client.totalPaid === 0 ? (
-                        <Badge variant="destructive">Sin pagar</Badge>
+                        <Badge className="bg-red-500/20 text-red-300 border border-red-500/30">Sin pagar</Badge>
                       ) : (
-                        <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Parcial</Badge>
+                        <Badge className="bg-orange-500/20 text-orange-300 border border-orange-500/30">Parcial</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
@@ -1153,7 +1197,7 @@ export function DebtReport({
                           onClick={() => setSelectedClient(client.clientName)}
                           variant="ghost"
                           size="sm"
-                          className="h-8 px-2"
+                          className="h-8 px-2 text-gray-300 hover:text-white hover:bg-white/10"
                         >
                           Ver detalle
                         </Button>

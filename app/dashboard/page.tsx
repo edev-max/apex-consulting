@@ -372,13 +372,13 @@ export default function DashboardPage() {
               </Button>
             </div>
 
-            <Card className="mb-6 border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
+            <Card className="mb-6 border border-white/10 bg-white/5 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-900">
-                  <FileTextIcon className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <FileTextIcon className="h-5 w-5 text-blue-400" />
                   Filtrar Reporte de Deudas por Cliente
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-400">
                   Selecciona un cliente para ver únicamente sus deudas pendientes y presupuestos
                 </CardDescription>
               </CardHeader>
@@ -387,7 +387,7 @@ export default function DashboardPage() {
                   <select
                     value={selectedClientForDebtReport}
                     onChange={(e) => setSelectedClientForDebtReport(e.target.value)}
-                    className="flex-1 p-3 rounded-lg border-2 border-blue-200 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                    className="flex-1 p-3 rounded-lg border border-white/20 bg-[#1a1a2e] text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg [&>option]:bg-[#1a1a2e] [&>option]:text-white"
                   >
                     <option value="all">📊 Todos los clientes (Reporte General)</option>
                     {clients.map((client) => {
@@ -563,8 +563,8 @@ export default function DashboardPage() {
             {/* Header with Add Hours Button */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Control de Horas</h2>
-                <p className="text-gray-500">Registra y gestiona las horas asociadas a presupuestos</p>
+                <h2 className="text-2xl font-bold text-white">Control de Horas</h2>
+                <p className="text-gray-400">Registra y gestiona las horas asociadas a presupuestos</p>
               </div>
               <AddHoursDialog budgets={budgets} onSave={handleSaveHourEntry} />
             </div>
@@ -662,7 +662,7 @@ export default function DashboardPage() {
                       {hourEntries.map((entry) => (
                         <TableRow
                           key={entry.id}
-                          className={entry.paid ? "bg-green-50 opacity-75" : (entry.hours || 0) < 0 ? "bg-red-50" : ""}
+                          className={entry.paid ? "bg-green-500/10 opacity-75" : (entry.hours || 0) < 0 ? "bg-red-500/10" : ""}
                         >
                           <TableCell className={entry.paid ? "line-through text-gray-500" : ""}>
                             {new Date(entry.date).toLocaleDateString("es-ES")}
@@ -690,22 +690,22 @@ export default function DashboardPage() {
                           </TableCell>
                           <TableCell>
                             {entry.paid ? (
-                              <Badge className="bg-green-100 text-green-800">Pagado</Badge>
+                              <Badge className="bg-green-500/20 text-green-300 border border-green-500/30">Pagado</Badge>
                             ) : (entry.hours || 0) > 0 ? (
-                              <Badge className="bg-blue-100 text-blue-800">Sumado</Badge>
+                              <Badge className="bg-blue-500/20 text-blue-300 border border-blue-500/30">Sumado</Badge>
                             ) : (
-                              <Badge className="bg-red-100 text-red-800">Restado</Badge>
+                              <Badge className="bg-red-500/20 text-red-300 border border-red-500/30">Restado</Badge>
                             )}
                           </TableCell>
                           <TableCell>
                             {entry.paid ? (
-                              <span className="text-green-600 text-sm">✓ Cerrado</span>
+                              <span className="text-green-400 text-sm">✓ Cerrado</span>
                             ) : (
                               <div className="flex items-center gap-1">
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  className="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-500/20"
                                   onClick={() => handleMarkHourAsPaid(entry.id)}
                                   title="Marcar como pagado"
                                 >
@@ -714,7 +714,7 @@ export default function DashboardPage() {
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/20"
                                   onClick={() => handleDeleteHourEntry(entry.id)}
                                   title="Eliminar"
                                 >
@@ -744,13 +744,13 @@ export default function DashboardPage() {
                     return (
                       <div
                         key={budget.id}
-                        className="p-4 rounded-xl border bg-gradient-to-r from-gray-50 to-gray-100 hover:from-blue-50 hover:to-purple-50 transition-all"
+                        className="p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <p className="font-semibold text-gray-900">{budget.project_name}</p>
-                            <p className="text-sm text-gray-500">{budget.client_name}</p>
-                            <p className="text-xs text-gray-400">#{budget.number}</p>
+                            <p className="font-semibold text-white">{budget.project_name}</p>
+                            <p className="text-sm text-gray-400">{budget.client_name}</p>
+                            <p className="text-xs text-gray-500">#{budget.number}</p>
                           </div>
                           <div className="text-right">
                             <p
@@ -964,37 +964,37 @@ export default function DashboardPage() {
 
   if (dbError || !tablesExist) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <Card className="w-full max-w-2xl">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] p-4">
+        <Card className="w-full max-w-2xl bg-[#12121a] border-white/10">
           <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <DatabaseIcon className="h-8 w-8 text-red-600" />
+            <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
+              <DatabaseIcon className="h-8 w-8 text-red-400" />
             </div>
-            <CardTitle className="text-2xl font-bold text-red-600">Base de Datos No Configurada</CardTitle>
-            <CardDescription>Las tablas de la base de datos no existen aún</CardDescription>
+            <CardTitle className="text-2xl font-bold text-red-400">Base de Datos No Configurada</CardTitle>
+            <CardDescription className="text-gray-400">Las tablas de la base de datos no existen aún</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
               <div className="flex items-start">
-                <AlertTriangleIcon className="h-5 w-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+                <AlertTriangleIcon className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <p className="text-red-800 font-semibold mb-2">Error:</p>
-                  <p className="text-red-700 text-sm">{dbError}</p>
+                  <p className="text-red-300 font-semibold mb-2">Error:</p>
+                  <p className="text-red-200 text-sm">{dbError}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h3 className="font-semibold text-blue-800 mb-3">📋 Pasos para Configurar la Base de Datos:</h3>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-blue-700">
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-blue-300 mb-3">📋 Pasos para Configurar la Base de Datos:</h3>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-blue-200">
                 <li>
-                  Ve a tu proyecto de Supabase: <strong>https://supabase.com/dashboard</strong>
+                  Ve a tu proyecto de Supabase: <strong className="text-blue-100">https://supabase.com/dashboard</strong>
                 </li>
                 <li>
-                  Navega a <strong>SQL Editor</strong> en el menú lateral
+                  Navega a <strong className="text-blue-100">SQL Editor</strong> en el menú lateral
                 </li>
                 <li>
-                  Ejecuta los scripts SQL que están en la carpeta <code>scripts/</code>
+                  Ejecuta los scripts SQL que están en la carpeta <code className="bg-blue-500/20 px-1 rounded">scripts/</code>
                 </li>
               </ol>
             </div>

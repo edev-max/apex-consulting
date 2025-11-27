@@ -84,30 +84,30 @@ export function AddHoursDialog({ budgets, onSave }: AddHoursDialogProps) {
           Registrar Horas
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] bg-[#1a1a2e] border border-white/10">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="flex items-center gap-2 text-xl text-white">
             <ClockIcon className="h-5 w-5 text-blue-600" />
             Registrar Horas
           </DialogTitle>
-          <DialogDescription>Agrega o resta horas asociadas a un presupuesto específico</DialogDescription>
+          <DialogDescription className="text-gray-400">Agrega o resta horas asociadas a un presupuesto específico</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Tipo de movimiento */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Tipo de Movimiento</Label>
+            <Label className="text-sm font-medium text-gray-300">Tipo de Movimiento</Label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setType("add")}
                 className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
                   type === "add"
-                    ? "border-green-500 bg-green-50 text-green-700"
-                    : "border-gray-200 hover:border-green-300 hover:bg-green-50/50"
+                    ? "border-green-500 bg-green-500/20 text-green-300"
+                    : "border-white/20 hover:border-green-500/50 hover:bg-green-500/10 text-gray-300"
                 }`}
               >
-                <div className={`p-2 rounded-full ${type === "add" ? "bg-green-500 text-white" : "bg-gray-100"}`}>
+                <div className={`p-2 rounded-full ${type === "add" ? "bg-green-500 text-white" : "bg-white/10"}`}>
                   <PlusIcon className="h-5 w-5" />
                 </div>
                 <div className="text-left">
@@ -120,11 +120,11 @@ export function AddHoursDialog({ budgets, onSave }: AddHoursDialogProps) {
                 onClick={() => setType("subtract")}
                 className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
                   type === "subtract"
-                    ? "border-red-500 bg-red-50 text-red-700"
-                    : "border-gray-200 hover:border-red-300 hover:bg-red-50/50"
+                    ? "border-red-500 bg-red-500/20 text-red-300"
+                    : "border-white/20 hover:border-red-500/50 hover:bg-red-500/10 text-gray-300"
                 }`}
               >
-                <div className={`p-2 rounded-full ${type === "subtract" ? "bg-red-500 text-white" : "bg-gray-100"}`}>
+                <div className={`p-2 rounded-full ${type === "subtract" ? "bg-red-500 text-white" : "bg-white/10"}`}>
                   <MinusIcon className="h-5 w-5" />
                 </div>
                 <div className="text-left">
@@ -137,15 +137,15 @@ export function AddHoursDialog({ budgets, onSave }: AddHoursDialogProps) {
 
           {/* Selector de presupuesto */}
           <div className="space-y-2">
-            <Label htmlFor="budget" className="text-sm font-medium flex items-center gap-2">
-              <FileTextIcon className="h-4 w-4 text-blue-600" />
+            <Label htmlFor="budget" className="text-sm font-medium flex items-center gap-2 text-gray-300">
+              <FileTextIcon className="h-4 w-4 text-blue-400" />
               Presupuesto Asociado
             </Label>
             <select
               id="budget"
               value={budgetId}
               onChange={(e) => setBudgetId(e.target.value)}
-              className="w-full p-3 rounded-lg border border-gray-200 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className="w-full p-3 rounded-lg border border-white/20 bg-[#0a0a0f] text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
             >
               <option value="">Seleccionar presupuesto...</option>
               {budgets.map((budget) => (
@@ -158,18 +158,18 @@ export function AddHoursDialog({ budgets, onSave }: AddHoursDialogProps) {
 
           {/* Preview del presupuesto seleccionado */}
           {selectedBudget && (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-500 text-white">
                   <FileTextIcon className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-blue-900">{selectedBudget.project_name}</div>
-                  <div className="text-sm text-blue-700">{selectedBudget.client_name}</div>
+                  <div className="font-semibold text-white">{selectedBudget.project_name}</div>
+                  <div className="text-sm text-blue-300">{selectedBudget.client_name}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-blue-600">Total</div>
-                  <div className="font-bold text-blue-900">${selectedBudget.total.toLocaleString()}</div>
+                  <div className="text-xs text-blue-400">Total</div>
+                  <div className="font-bold text-white">${selectedBudget.total.toLocaleString()}</div>
                 </div>
               </div>
             </div>
@@ -178,7 +178,7 @@ export function AddHoursDialog({ budgets, onSave }: AddHoursDialogProps) {
           {/* Horas y fecha */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="hours" className="text-sm font-medium">
+              <Label htmlFor="hours" className="text-sm font-medium text-gray-300">
                 Cantidad de Horas
               </Label>
               <Input
@@ -193,7 +193,7 @@ export function AddHoursDialog({ budgets, onSave }: AddHoursDialogProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="date" className="text-sm font-medium">
+              <Label htmlFor="date" className="text-sm font-medium text-gray-300">
                 Fecha
               </Label>
               <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -202,7 +202,7 @@ export function AddHoursDialog({ budgets, onSave }: AddHoursDialogProps) {
 
           {/* Descripción */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">
+            <Label htmlFor="description" className="text-sm font-medium text-gray-300">
               Descripción del Trabajo
             </Label>
             <Textarea
@@ -218,14 +218,14 @@ export function AddHoursDialog({ budgets, onSave }: AddHoursDialogProps) {
           {hours && (
             <div
               className={`p-4 rounded-xl border-2 ${
-                type === "add" ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
+                type === "add" ? "border-green-500/50 bg-green-500/20" : "border-red-500/50 bg-red-500/20"
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className={type === "add" ? "text-green-700" : "text-red-700"}>
+                <span className={type === "add" ? "text-green-300" : "text-red-300"}>
                   {type === "add" ? "Se sumarán" : "Se restarán"}
                 </span>
-                <span className={`text-2xl font-bold ${type === "add" ? "text-green-600" : "text-red-600"}`}>
+                <span className={`text-2xl font-bold ${type === "add" ? "text-green-400" : "text-red-400"}`}>
                   {type === "add" ? "+" : "-"}
                   {hours} horas
                 </span>
