@@ -159,17 +159,15 @@ export function useSupabaseData() {
     }
   }
 
-  // Cargar datos iniciales
+  // Cargar datos iniciales cuando el usuario está autenticado
   useEffect(() => {
-    if (user && tablesExist) {
-      loadClients()
-      loadHourEntries()
-      loadBudgets()
-      loadInvoices()
-      loadCompanySettings()
-      loadBudgetPayments()
+    if (user) {
+      loadAllData()
+    } else {
+      // Si no hay usuario, dejamos de cargar
+      setLoading(false)
     }
-  }, [user, tablesExist])
+  }, [user])
 
   const loadAllData = async () => {
     if (!user) return
