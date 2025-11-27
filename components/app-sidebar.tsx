@@ -2,6 +2,7 @@
 
 import type React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -44,12 +45,14 @@ export function AppSidebar({
   onTabChange,
   ...props
 }: AppSidebarProps) {
+  const router = useRouter()
   const { user, signOut } = useAuth()
   const { companySettings, userProfile } = useSupabaseData()
 
   const handleSignOut = async () => {
     if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
       await signOut()
+      router.push("/")
     }
   }
 
