@@ -40,6 +40,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { DashboardCards } from "@/components/dashboard-cards"
 import { DebtReport } from "@/components/debt-report"
 import { AddHoursDialog } from "@/components/add-hours-dialog"
+import { RegisterPaymentDialog } from "@/components/register-payment-dialog"
 
 interface Budget {
   id: string
@@ -103,6 +104,9 @@ export default function DashboardPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
+  const [showRegisterPaymentDialog, setShowRegisterPaymentDialog] = useState(false)
+  const [selectedBudgetForPayment, setSelectedBudgetForPayment] = useState<string | undefined>()
+
   const { user, updatePassword } = useAuth()
   const {
     budgets,
@@ -124,6 +128,10 @@ export default function DashboardPage() {
     saveCompanySettings,
     saveUserProfile,
     checkTablesExist,
+    budgetPayments,
+    registerBudgetPayment,
+    deleteBudgetPayment,
+    getPaymentsByBudget,
   } = useSupabaseData()
 
   // Estados para cambio de contraseña
@@ -308,6 +316,22 @@ export default function DashboardPage() {
     }
   }
 
+  const handleRegisterPayment = async (paymentData: {
+    budget_id: string
+    amount: number
+    payment_date: string
+    payment_method: string
+    reference_number: string
+    notes: string
+  }) => {
+    await registerBudgetPayment(paymentData)
+  }
+
+  const handleOpenPaymentDialog = (budgetId?: string) => {
+    setSelectedBudgetForPayment(budgetId)
+    setShowRegisterPaymentDialog(true)
+  }
+
   const getTabTitle = (tab: string) => {
     switch (tab) {
       case "dashboard":
@@ -341,6 +365,13 @@ export default function DashboardPage() {
       case "budgets":
         return (
           <div className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => handleOpenPaymentDialog()} className="bg-green-600 hover:bg-green-700">
+                <DollarSignIcon className="h-4 w-4 mr-2" />
+                Registrar Pago
+              </Button>
+            </div>
+
             <Card className="mb-6 border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-blue-900">
@@ -384,6 +415,9 @@ export default function DashboardPage() {
               selectedClientId={selectedClientForDebtReport}
               companyName={companySettings?.company_name || "APEX CONSULTING"}
               companyLogoUrl={companySettings?.company_logo_url || null}
+              onRegisterPayment={handleOpenPaymentDialog}
+              budgetPayments={budgetPayments}
+              getPaymentsByBudget={getPaymentsByBudget}
             />
           </div>
         )
@@ -1008,6 +1042,13 @@ export default function DashboardPage() {
           <div className="min-h-[100vh] flex-1 rounded-xl md:min-h-min">{renderTabContent()}</div>
         </div>
       </SidebarInset>
+      <RegisterPaymentDialog
+        open={showRegisterPaymentDialog}
+        onOpenChange={setShowRegisterPaymentDialog}
+        budgets={budgets}
+        selectedBudgetId={selectedBudgetForPayment}
+        onSave={handleRegisterPayment}
+      />
     </SidebarProvider>
   )
 }

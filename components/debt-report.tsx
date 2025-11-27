@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +16,7 @@ import {
   Printer,
   ArrowLeft,
   CheckCircleIcon,
+  DollarSignIcon,
 } from "lucide-react"
 import {
   BarChart,
@@ -69,12 +70,27 @@ interface ClientDebt {
 
 interface DebtReportProps {
   budgets: Budget[]
+  clients: Client[] // Assuming Client interface exists elsewhere
   invoices: Invoice[]
+  selectedClientId?: string
   companyName?: string
-  companyLogo?: string
+  companyLogoUrl?: string | null
+  onRegisterPayment?: (budgetId?: string) => void
+  budgetPayments?: any[] // Assuming this is an array of payment objects
+  getPaymentsByBudget?: (budgetId: string) => any[]
 }
 
-export function DebtReport({ budgets, invoices, companyName = "APEX CONSULTING", companyLogo }: DebtReportProps) {
+export function DebtReport({
+  budgets,
+  clients, // This prop is not used in the current logic, but is part of the update
+  invoices,
+  selectedClientId,
+  companyName = "APEX CONSULTING",
+  companyLogoUrl,
+  onRegisterPayment,
+  budgetPayments = [], // Default value for budgetPayments
+  getPaymentsByBudget,
+}: DebtReportProps) {
   const [selectedClient, setSelectedClient] = useState<string | null>(null)
 
   const calculateClientDebts = (): ClientDebt[] => {
@@ -622,7 +638,7 @@ export function DebtReport({ budgets, invoices, companyName = "APEX CONSULTING",
   <div class="container">
     <div class="header">
       <div class="header-left">
-        ${companyLogo ? `<img src="${companyLogo}" alt="Logo" class="company-logo" />` : ""}
+        ${companyLogoUrl ? `<img src="${companyLogoUrl}" alt="Logo" class="company-logo" />` : ""}
         <div class="company-info">
           <h1>${companyName}</h1>
           <p class="tagline">Reporte de Deudas Pendientes</p>
@@ -660,6 +676,19 @@ export function DebtReport({ budgets, invoices, companyName = "APEX CONSULTING",
     printWindow.document.close()
   }
 
+  const getPaymentMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      transfer: "Transferencia",
+      cash: "Efectivo",
+      check: "Cheque",
+      card: "Tarjeta",
+      paypal: "PayPal",
+      zelle: "Zelle",
+      other: "Otro",
+    }
+    return labels[method] || method
+  }
+
   if (clientDebts.length === 0) {
     return (
       <Card>
@@ -691,7 +720,7 @@ export function DebtReport({ budgets, invoices, companyName = "APEX CONSULTING",
           </Button>
         </div>
 
-        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white shadow-lg">
           <CardHeader>
             <CardTitle className="text-3xl text-blue-900">{selectedClientData.clientName}</CardTitle>
             <CardDescription>Presupuestos con saldo pendiente de pago</CardDescription>
@@ -856,6 +885,75 @@ export function DebtReport({ budgets, invoices, companyName = "APEX CONSULTING",
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {getPaymentsByBudget && (
+          <Card className="border-2 border-blue-200 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSignIcon className="h-5 w-5 text-green-600" />
+                Historial de Pagos
+              </CardTitle>
+              <CardDescription>Pagos registrados para los presupuestos pendientes de este cliente</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const clientPayments = selectedClientData.budgets.flatMap((budget) => {
+                  const payments = getPaymentsByBudget(budget.id)
+                  return payments.map((p) => ({
+                    ...p,
+                    budget_number: budget.number,
+                    project_name: budget.project_name,
+                  }))
+                })
+
+                if (clientPayments.length === 0) {
+                  return <p className="text-gray-500 text-center py-4">No hay pagos registrados</p>
+                }
+
+                return (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-green-50">
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Presupuesto</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Referencia</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {clientPayments
+                        .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+                        .map((payment) => (
+                          <TableRow key={payment.id}>
+                            <TableCell>{new Date(payment.payment_date).toLocaleDateString("es-ES")}</TableCell>
+                            <TableCell>
+                              #{payment.budget_number} - {payment.project_name}
+                            </TableCell>
+                            <TableCell>{getPaymentMethodLabel(payment.payment_method)}</TableCell>
+                            <TableCell>{payment.reference_number || "-"}</TableCell>
+                            <TableCell className="text-right font-bold text-green-600">
+                              ${Number(payment.amount).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                    <TableFooter>
+                      <TableRow className="bg-green-100">
+                        <TableCell colSpan={4} className="text-right font-bold">
+                          Total Pagado:
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-green-700 text-lg">
+                          ${clientPayments.reduce((sum, p) => sum + Number(p.amount), 0).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    </TableFooter>
+                  </Table>
+                )
+              })()}
             </CardContent>
           </Card>
         )}
