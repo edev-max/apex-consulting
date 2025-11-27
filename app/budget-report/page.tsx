@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Trash2Icon, PrinterIcon, ArrowLeftIcon, SaveIcon } from "lucide-react"
+import { Trash2Icon, PrinterIcon, ArrowLeftIcon, SaveIcon, PencilIcon } from "lucide-react"
 import Link from "next/link"
 import { useBudgetStorage } from "@/hooks/useBudgetStorage"
 import { useAuth } from "@/hooks/useAuth"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSupabaseData } from "@/hooks/useSupabaseData"
 
 interface BudgetItem {
@@ -23,16 +23,22 @@ interface BudgetItem {
   unit: string
 }
 
-export default function InteractiveBudgetReport() {
+function BudgetReportContent() {
   const { user } = useAuth()
   const router = useRouter()
-  const { saveBudget, getNextBudgetNumber } = useBudgetStorage()
-  const { companySettings: settings } = useSupabaseData()
+  const searchParams = useSearchParams()
+  const editBudgetId = searchParams.get('edit')
+  
+  const { saveBudget, getNextBudgetNumber, updateBudget } = useBudgetStorage()
+  const { companySettings: settings, budgets, loading: loadingBudgets } = useSupabaseData()
 
   const [clientName, setClientName] = useState<string>("")
   const [projectName, setProjectName] = useState<string>("")
   const [projectDescription, setProjectDescription] = useState<string>("")
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([])
+  const [isEditMode, setIsEditMode] = useState<boolean>(false)
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null)
+  const [loadingBudgetData, setLoadingBudgetData] = useState<boolean>(false)
 
   const [reportNumber, setReportNumber] = useState<number>(589)
   const [startCorrelativeFrom, setStartCorrelativeFrom] = useState<string>("589")
@@ -44,17 +50,51 @@ export default function InteractiveBudgetReport() {
     }
   }, [user, router])
 
-  // Cargar el siguiente número de presupuesto al montar el componente
+  // Cargar presupuesto existente si se está editando
+  useEffect(() => {
+    if (editBudgetId) {
+      if (loadingBudgets) {
+        setLoadingBudgetData(true)
+        return
+      }
+      
+      const budgetToEdit = budgets.find((b: any) => b.id === editBudgetId)
+      if (budgetToEdit) {
+        setIsEditMode(true)
+        setEditingBudgetId(editBudgetId)
+        setClientName(budgetToEdit.client_name || '')
+        setProjectName(budgetToEdit.project_name || '')
+        setProjectDescription(budgetToEdit.project_description || '')
+        setReportNumber(parseInt(budgetToEdit.number) || 1)
+        setStartCorrelativeFrom(budgetToEdit.number || '1')
+        
+        // Cargar los items del presupuesto
+        if (budgetToEdit.items && Array.isArray(budgetToEdit.items)) {
+          setBudgetItems(budgetToEdit.items.map((item: any) => ({
+            id: item.id || crypto.randomUUID(),
+            category: item.category || '',
+            description: item.description || '',
+            quantity: item.quantity || 0,
+            rate: item.rate || item.price || 0,
+            unit: item.unit || '',
+          })))
+        }
+      }
+      setLoadingBudgetData(false)
+    }
+  }, [editBudgetId, budgets, loadingBudgets])
+
+  // Cargar el siguiente número de presupuesto al montar el componente (solo si no está en modo edición)
   useEffect(() => {
     const loadNextNumber = async () => {
-      if (user) {
+      if (user && !editBudgetId) {
         const nextNumber = await getNextBudgetNumber()
         setReportNumber(nextNumber)
         setStartCorrelativeFrom(nextNumber.toString())
       }
     }
     loadNextNumber()
-  }, [user, getNextBudgetNumber])
+  }, [user, getNextBudgetNumber, editBudgetId])
 
   useEffect(() => {
     const parsedNumber = Number.parseInt(startCorrelativeFrom, 10)
@@ -107,25 +147,49 @@ export default function InteractiveBudgetReport() {
       total: totalBudget,
     }
 
-    const savedBudget = await saveBudget(budgetData)
-    if (savedBudget) {
-      alert(`Presupuesto #${savedBudget.number} guardado exitosamente!`)
+    if (isEditMode && editingBudgetId) {
+      // Modo edición: actualizar presupuesto existente
+      const updatedBudget = await updateBudget(editingBudgetId, budgetData)
+      if (updatedBudget) {
+        alert(`Presupuesto #${updatedBudget.number} actualizado exitosamente!`)
+        router.push('/dashboard')
+      } else {
+        alert("Error al actualizar el presupuesto.")
+      }
+    } else {
+      // Modo creación: guardar nuevo presupuesto
+      const savedBudget = await saveBudget(budgetData)
+      if (savedBudget) {
+        alert(`Presupuesto #${savedBudget.number} guardado exitosamente!`)
 
-      // Limpiar formulario y preparar para el siguiente presupuesto
-      setClientName("")
-      setProjectName("")
-      setProjectDescription("")
-      setBudgetItems([])
+        // Limpiar formulario y preparar para el siguiente presupuesto
+        setClientName("")
+        setProjectName("")
+        setProjectDescription("")
+        setBudgetItems([])
 
-      // Incrementar número para el siguiente presupuesto
-      const nextNumber = reportNumber + 1
-      setReportNumber(nextNumber)
-      setStartCorrelativeFrom(nextNumber.toString())
+        // Incrementar número para el siguiente presupuesto
+        const nextNumber = reportNumber + 1
+        setReportNumber(nextNumber)
+        setStartCorrelativeFrom(nextNumber.toString())
+      }
     }
   }
 
   if (!user) {
     return null // El useEffect se encargará de redirigir
+  }
+
+  // Mostrar carga mientras se obtienen los datos del presupuesto a editar
+  if (editBudgetId && loadingBudgetData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Cargando presupuesto...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -140,8 +204,14 @@ export default function InteractiveBudgetReport() {
               </Button>
             </Link>
             <div>
-              <CardTitle className="text-white">Configurar Presupuesto</CardTitle>
-              <CardDescription className="text-gray-400">Ingresa los detalles del cliente y las líneas de presupuesto.</CardDescription>
+              <CardTitle className="text-white">
+                {isEditMode ? 'Editar Presupuesto' : 'Configurar Presupuesto'}
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                {isEditMode 
+                  ? 'Modifica los detalles del presupuesto existente.' 
+                  : 'Ingresa los detalles del cliente y las líneas de presupuesto.'}
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -242,8 +312,8 @@ export default function InteractiveBudgetReport() {
 
           <div className="flex gap-2">
             <Button onClick={handleSaveBudget} className="flex-1 bg-transparent" variant="outline">
-              <SaveIcon className="mr-2 h-4 w-4" />
-              Guardar Presupuesto
+              {isEditMode ? <PencilIcon className="mr-2 h-4 w-4" /> : <SaveIcon className="mr-2 h-4 w-4" />}
+              {isEditMode ? 'Actualizar Presupuesto' : 'Guardar Presupuesto'}
             </Button>
             <Button onClick={handlePrint} className="flex-1">
               <PrinterIcon className="mr-2 h-4 w-4" />
@@ -361,5 +431,20 @@ export default function InteractiveBudgetReport() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function InteractiveBudgetReport() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Cargando...</p>
+        </div>
+      </div>
+    }>
+      <BudgetReportContent />
+    </Suspense>
   )
 }

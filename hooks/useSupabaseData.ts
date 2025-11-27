@@ -277,11 +277,11 @@ export function useSupabaseData() {
   }
 
   const updateBudget = async (budgetId: string, updates: Partial<Budget>) => {
-    if (!user || !tablesExist) return
+    if (!user || !tablesExist) return null
 
     try {
       const supabase = getClient()
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("budgets")
         .update({
           client_name: updates.client_name,
@@ -292,18 +292,23 @@ export function useSupabaseData() {
           items: updates.items,
           paid_amount: updates.paid_amount,
           payment_status: updates.payment_status,
+          number: updates.number,
         })
         .eq("id", budgetId)
         .eq("user_id", user.id)
+        .select()
+        .single()
 
       if (error) {
         console.error("Error updating budget:", error)
-        return
+        return null
       }
 
       await loadBudgets()
+      return data
     } catch (error) {
       console.error("Error updating budget:", error)
+      return null
     }
   }
 
