@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   CheckCircleIcon,
   DollarSignIcon,
+  Eye,
+  Pencil,
 } from "lucide-react"
 import {
   BarChart,
@@ -76,6 +78,8 @@ interface DebtReportProps {
   companyName?: string
   companyLogoUrl?: string | null
   onRegisterPayment?: (budgetId?: string) => void
+  onViewBudget?: (budget: Budget) => void
+  onPrintBudget?: (budget: Budget) => void
   budgetPayments?: any[] // Assuming this is an array of payment objects
   getPaymentsByBudget?: (budgetId: string) => any[]
 }
@@ -88,6 +92,8 @@ export function DebtReport({
   companyName = "APEX CONSULTING",
   companyLogoUrl,
   onRegisterPayment,
+  onViewBudget,
+  onPrintBudget,
   budgetPayments = [], // Default value for budgetPayments
   getPaymentsByBudget,
 }: DebtReportProps) {
@@ -809,17 +815,41 @@ export function DebtReport({
                               <Badge className="bg-red-500/20 text-red-300 border border-red-500/30">Sin pagar</Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-center">
-                            {pendingAmount > 0 && onRegisterPayment && (
-                              <Button
-                                onClick={() => onRegisterPayment(budget.id)}
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                              >
-                                <DollarSignIcon className="h-4 w-4 mr-1" />
-                                Pagar
-                              </Button>
-                            )}
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              {onViewBudget && (
+                                <Button
+                                  onClick={() => onViewBudget(budget)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                                  title="Ver/Editar"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {onPrintBudget && (
+                                <Button
+                                  onClick={() => onPrintBudget(budget)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
+                                  title="Reimprimir"
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {pendingAmount > 0 && onRegisterPayment && (
+                                <Button
+                                  onClick={() => onRegisterPayment(budget.id)}
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white h-8 px-2"
+                                >
+                                  <DollarSignIcon className="h-4 w-4 mr-1" />
+                                  Pagar
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       )

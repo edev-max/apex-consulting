@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "next/navigation"
 import {
@@ -16,6 +16,28 @@ import {
   Lock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+
+// Hook para detectar cuando un elemento está visible en el viewport
+function useInView(options = {}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [isInView, setIsInView] = useState(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsInView(true)
+      }
+    }, { threshold: 0.1, ...options })
+
+    if (ref.current) {
+      observer.observe(ref.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  return { ref, isInView }
+}
 
 const services = [
   {
@@ -72,6 +94,13 @@ export default function Home() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [isScrolled, setIsScrolled] = useState(false)
+
+  // Hooks para animaciones de scroll
+  const statsSection = useInView()
+  const servicesSection = useInView()
+  const projectsSection = useInView()
+  const aboutSection = useInView()
+  const contactSection = useInView()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -181,12 +210,25 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 border-y border-white/10">
+      <section 
+        ref={statsSection.ref}
+        className="py-20 border-y border-white/10 overflow-hidden"
+      >
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-4xl md:text-5xl font-bold mb-2">{stat.value}</div>
+              <div 
+                key={index} 
+                className={`text-center transition-all duration-700 ${
+                  statsSection.isInView 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 translate-y-10'
+                }`}
+                style={{ transitionDelay: `${index * 100}ms` }}
+              >
+                <div className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                  {stat.value}
+                </div>
                 <div className="text-sm text-gray-500">{stat.label}</div>
               </div>
             ))}
@@ -195,9 +237,19 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section id="servicios" className="py-24">
+      <section 
+        id="servicios" 
+        ref={servicesSection.ref}
+        className="py-24 overflow-hidden"
+      >
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
+          <div 
+            className={`text-center mb-16 transition-all duration-700 ${
+              servicesSection.isInView 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-10'
+            }`}
+          >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Nuestros Servicios</h2>
             <p className="text-gray-400 max-w-2xl mx-auto">
               Ofrecemos soluciones integrales adaptadas a las necesidades específicas de cada cliente.
@@ -208,9 +260,14 @@ export default function Home() {
             {services.map((service, index) => (
               <div
                 key={index}
-                className="group p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-300"
+                className={`group p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-500 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/10 ${
+                  servicesSection.isInView 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 translate-y-16'
+                }`}
+                style={{ transitionDelay: `${index * 100 + 200}ms` }}
               >
-                <div className="w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center mb-4 group-hover:bg-blue-600/30 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center mb-4 group-hover:bg-blue-600/30 group-hover:scale-110 transition-all duration-300">
                   <service.icon className="h-6 w-6 text-blue-400" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">{service.title}</h3>
@@ -222,9 +279,19 @@ export default function Home() {
       </section>
 
       {/* Projects Section */}
-      <section id="proyectos" className="py-24 bg-white/[0.02]">
+      <section 
+        id="proyectos" 
+        ref={projectsSection.ref}
+        className="py-24 bg-white/[0.02] overflow-hidden"
+      >
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-16">
+          <div 
+            className={`flex flex-col md:flex-row md:items-end md:justify-between mb-16 transition-all duration-700 ${
+              projectsSection.isInView 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-10'
+            }`}
+          >
             <div>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Proyectos Destacados</h2>
               <p className="text-gray-400 max-w-xl">
@@ -241,7 +308,12 @@ export default function Home() {
             {projects.map((project, index) => (
               <div
                 key={index}
-                className="group relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-white/20 transition-all duration-300"
+                className={`group relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-white/20 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10 ${
+                  projectsSection.isInView 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 translate-y-20'
+                }`}
+                style={{ transitionDelay: `${index * 150 + 200}ms` }}
               >
                 <div className="aspect-[4/3] overflow-hidden">
                   <img
@@ -266,10 +338,20 @@ export default function Home() {
       </section>
 
       {/* About Section */}
-      <section id="nosotros" className="py-24">
+      <section 
+        id="nosotros" 
+        ref={aboutSection.ref}
+        className="py-24 overflow-hidden"
+      >
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
+            <div 
+              className={`transition-all duration-1000 ${
+                aboutSection.isInView 
+                  ? 'opacity-100 translate-x-0' 
+                  : 'opacity-0 -translate-x-20'
+              }`}
+            >
               <h2 className="text-3xl md:text-4xl font-bold mb-6">Un equipo comprometido con la excelencia</h2>
               <p className="text-gray-400 mb-6">
                 En APEX CONSULTING combinamos experiencia técnica con visión estratégica para ofrecer soluciones que
@@ -277,7 +359,14 @@ export default function Home() {
                 para entender sus desafíos y diseñar la mejor ruta hacia el éxito.
               </p>
               <div className="grid grid-cols-2 gap-6">
-                <div className="flex items-start gap-3">
+                <div 
+                  className={`flex items-start gap-3 transition-all duration-700 ${
+                    aboutSection.isInView 
+                      ? 'opacity-100 translate-y-0' 
+                      : 'opacity-0 translate-y-10'
+                  }`}
+                  style={{ transitionDelay: '300ms' }}
+                >
                   <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center flex-shrink-0">
                     <Users className="h-5 w-5 text-blue-400" />
                   </div>
@@ -286,7 +375,14 @@ export default function Home() {
                     <div className="text-sm text-gray-500">Profesionales certificados</div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
+                <div 
+                  className={`flex items-start gap-3 transition-all duration-700 ${
+                    aboutSection.isInView 
+                      ? 'opacity-100 translate-y-0' 
+                      : 'opacity-0 translate-y-10'
+                  }`}
+                  style={{ transitionDelay: '450ms' }}
+                >
                   <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center flex-shrink-0">
                     <BarChart3 className="h-5 w-5 text-blue-400" />
                   </div>
@@ -297,32 +393,60 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="aspect-square rounded-2xl overflow-hidden">
-                <img src="/modern-office-team-meeting-dark-professional.jpg" alt="Equipo APEX" className="w-full h-full object-cover" />
+            <div 
+              className={`relative transition-all duration-1000 ${
+                aboutSection.isInView 
+                  ? 'opacity-100 translate-x-0 scale-100' 
+                  : 'opacity-0 translate-x-20 scale-95'
+              }`}
+              style={{ transitionDelay: '200ms' }}
+            >
+              <div className="aspect-square rounded-2xl overflow-hidden group">
+                <img 
+                  src="/modern-office-team-meeting-dark-professional.jpg" 
+                  alt="Equipo APEX" 
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                />
               </div>
-              <div className="absolute -bottom-6 -left-6 w-48 h-48 bg-blue-600/30 rounded-2xl blur-2xl" />
+              <div className="absolute -bottom-6 -left-6 w-48 h-48 bg-blue-600/30 rounded-2xl blur-2xl animate-pulse" />
             </div>
           </div>
         </div>
       </section>
 
       {/* Contact Section */}
-      <section id="contacto" className="py-24 bg-white/[0.02]">
-        <div className="max-w-3xl mx-auto px-6 text-center">
+      <section 
+        id="contacto" 
+        ref={contactSection.ref}
+        className="py-24 bg-white/[0.02] overflow-hidden"
+      >
+        <div 
+          className={`max-w-3xl mx-auto px-6 text-center transition-all duration-1000 ${
+            contactSection.isInView 
+              ? 'opacity-100 translate-y-0 scale-100' 
+              : 'opacity-0 translate-y-16 scale-95'
+          }`}
+        >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">¿Listo para transformar tu negocio?</h2>
           <p className="text-gray-400 mb-10">
             Contáctanos hoy y descubre cómo podemos ayudarte a alcanzar tus objetivos tecnológicos.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-white text-black hover:bg-gray-200 rounded-full px-8">
+          <div 
+            className={`flex flex-col sm:flex-row gap-4 justify-center transition-all duration-700 ${
+              contactSection.isInView 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 translate-y-10'
+            }`}
+            style={{ transitionDelay: '300ms' }}
+          >
+            <Button size="lg" className="bg-white text-black hover:bg-gray-200 rounded-full px-8 hover:scale-105 transition-transform">
               Agendar Reunión
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="rounded-full px-8 border-white/20 text-white hover:bg-white/10 bg-transparent"
+              className="rounded-full px-8 border-white/20 text-white hover:bg-white/10 bg-transparent hover:scale-105 transition-transform"
             >
               info@apexconsulting.com
             </Button>
