@@ -354,11 +354,11 @@ export default function DashboardPage() {
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
 
-    const currentDate = new Date(budget.date).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+    const today = new Date(budget.date)
+    const dueDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    }
 
     const budgetItems = budget.items || []
     const totalBudget = budgetItems.reduce((sum: number, item: any) => sum + (item.quantity * item.rate), 0)
@@ -375,67 +375,44 @@ export default function DashboardPage() {
     
     body { 
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      background: #f5f5f5;
       min-height: 100vh;
-      padding: 40px;
-      color: #ffffff;
+      padding: 30px;
+      color: #1a1a1a;
     }
     
     .container {
-      max-width: 900px;
+      max-width: 800px;
       margin: 0 auto;
-      background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
-      border-radius: 24px;
-      border: 1px solid rgba(255,255,255,0.1);
+      background: white;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 
-        0 25px 50px -12px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(255,255,255,0.05),
-        inset 0 1px 0 rgba(255,255,255,0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
     
-    /* Header con gradiente espectacular */
+    /* Header */
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-      padding: 40px;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .header::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 100%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    }
-    
-    .header-content {
-      position: relative;
-      z-index: 1;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+      padding: 35px 40px;
+      border-bottom: 3px solid #e5c100;
     }
     
     .company-section {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 15px;
     }
     
     .company-logo {
-      width: 70px;
-      height: 70px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 16px;
+      width: 55px;
+      height: 55px;
+      background: #1a1a2e;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.3);
       overflow: hidden;
     }
     
@@ -446,176 +423,143 @@ export default function DashboardPage() {
     }
     
     .company-logo-text {
-      font-size: 32px;
+      font-size: 24px;
       font-weight: 800;
       color: white;
     }
     
     .company-info h1 {
-      font-size: 28px;
-      font-weight: 800;
-      color: white;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      margin-bottom: 4px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 2px;
     }
     
     .company-info p {
-      font-size: 14px;
-      color: rgba(255,255,255,0.8);
-      font-weight: 500;
+      font-size: 12px;
+      color: #666;
+      font-weight: 400;
     }
     
-    .budget-badge {
-      background: rgba(255,255,255,0.2);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.3);
-      border-radius: 16px;
-      padding: 20px 30px;
+    .budget-title {
       text-align: right;
     }
     
-    .budget-badge h2 {
-      font-size: 14px;
-      color: rgba(255,255,255,0.8);
-      text-transform: uppercase;
+    .budget-title h2 {
+      font-size: 32px;
+      font-weight: 300;
+      color: #1a1a1a;
       letter-spacing: 2px;
+    }
+    
+    .budget-title .number {
+      font-size: 14px;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    /* Client Section */
+    .client-section {
+      padding: 30px 40px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .client-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    
+    .client-info {
+      flex: 1;
+    }
+    
+    .client-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #e5c100;
+      font-weight: 600;
       margin-bottom: 5px;
     }
     
-    .budget-badge .number {
-      font-size: 32px;
-      font-weight: 800;
-      color: white;
+    .client-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 3px;
     }
     
-    .budget-badge .date {
+    .client-role {
       font-size: 13px;
-      color: rgba(255,255,255,0.7);
-      margin-top: 8px;
+      color: #666;
     }
     
-    /* Sección del cliente */
-    .client-section {
-      padding: 40px;
-      background: linear-gradient(180deg, rgba(102,126,234,0.1) 0%, transparent 100%);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+    .dates-info {
+      text-align: right;
     }
     
-    .client-card {
+    .date-row {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    
+    .date-row strong {
+      color: #1a1a1a;
+    }
+    
+    /* Contact & Payment Info */
+    .info-section {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 30px;
+      padding: 25px 40px;
+      background: #fafafa;
+      border-bottom: 1px solid #eee;
     }
     
-    .client-info-box {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 24px;
-    }
-    
-    .client-info-box .label {
+    .info-block h4 {
       font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: #667eea;
+      letter-spacing: 1px;
+      color: #e5c100;
       font-weight: 600;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
     
-    .client-info-box .value {
-      font-size: 20px;
-      font-weight: 700;
-      color: white;
+    .info-block p {
+      font-size: 13px;
+      color: #444;
+      margin-bottom: 4px;
     }
     
-    /* Descripción del proyecto */
-    .project-description {
-      padding: 0 40px 40px;
-    }
-    
-    .description-card {
-      background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
-      border: 1px solid rgba(102,126,234,0.2);
-      border-radius: 16px;
-      padding: 24px;
-    }
-    
-    .description-card h3 {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: #667eea;
-      font-weight: 600;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .description-card h3::before {
-      content: '';
-      width: 4px;
-      height: 4px;
-      background: #667eea;
-      border-radius: 50%;
-    }
-    
-    .description-card p {
-      font-size: 15px;
-      line-height: 1.7;
-      color: rgba(255,255,255,0.8);
-    }
-    
-    /* Tabla de items */
+    /* Items Table */
     .items-section {
-      padding: 0 40px 40px;
-    }
-    
-    .items-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    
-    .items-header h3 {
-      font-size: 18px;
-      font-weight: 700;
-      color: white;
-    }
-    
-    .items-count {
-      background: rgba(102,126,234,0.2);
-      color: #667eea;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 20px;
+      padding: 30px 40px;
     }
     
     .items-table {
       width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.08);
+      border-collapse: collapse;
     }
     
     .items-table thead {
-      background: linear-gradient(135deg, rgba(102,126,234,0.3) 0%, rgba(118,75,162,0.3) 100%);
+      background: #1a1a2e;
     }
     
     .items-table th {
-      padding: 18px 20px;
+      padding: 14px 16px;
       text-align: left;
       font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: rgba(255,255,255,0.9);
+      letter-spacing: 1px;
+      color: white;
       font-weight: 600;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .items-table th:nth-child(3),
+    .items-table th:nth-child(4) {
+      text-align: center;
     }
     
     .items-table th:last-child {
@@ -623,196 +567,209 @@ export default function DashboardPage() {
     }
     
     .items-table td {
-      padding: 20px;
-      font-size: 14px;
-      color: rgba(255,255,255,0.9);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      background: rgba(255,255,255,0.02);
+      padding: 16px;
+      font-size: 13px;
+      color: #333;
+      border-bottom: 1px solid #eee;
     }
     
-    .items-table tbody tr:hover td {
-      background: rgba(102,126,234,0.05);
+    .items-table tbody tr:nth-child(even) {
+      background: #fafafa;
     }
     
-    .items-table tbody tr:last-child td {
-      border-bottom: none;
+    .items-table tbody tr:nth-child(odd) td:first-child {
+      background: #e5c100;
+      color: #1a1a1a;
+      font-weight: 700;
+      text-align: center;
+      width: 40px;
+    }
+    
+    .items-table tbody tr:nth-child(even) td:first-child {
+      background: #f0d000;
+      color: #1a1a1a;
+      font-weight: 700;
+      text-align: center;
+      width: 40px;
+    }
+    
+    .items-table td:nth-child(3),
+    .items-table td:nth-child(4) {
+      text-align: center;
     }
     
     .items-table td:last-child {
       text-align: right;
       font-weight: 600;
-      color: white;
-    }
-    
-    .item-category {
-      display: inline-block;
-      background: rgba(102,126,234,0.15);
-      color: #a5b4fc;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 6px;
-      margin-bottom: 4px;
+      color: #1a1a1a;
     }
     
     .item-description {
       font-weight: 500;
-      color: white;
+      color: #333;
     }
     
-    .item-quantity {
-      color: rgba(255,255,255,0.7);
-    }
-    
-    .item-rate {
-      color: rgba(255,255,255,0.7);
-    }
-    
-    .item-subtotal {
-      font-size: 15px;
-      font-weight: 700;
-      color: #10b981 !important;
-    }
-    
-    /* Sección de totales */
+    /* Totals Section */
     .totals-section {
-      padding: 40px;
-      background: linear-gradient(180deg, transparent 0%, rgba(16,185,129,0.05) 100%);
+      padding: 0 40px 30px;
     }
     
-    .total-card {
-      display: flex;
-      justify-content: flex-end;
+    .totals-table {
+      width: 100%;
+      border-collapse: collapse;
     }
     
-    .total-box {
-      background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
-      border-radius: 20px;
-      padding: 30px 50px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 
-        0 20px 40px rgba(16, 185, 129, 0.3),
-        0 0 0 1px rgba(255,255,255,0.1);
+    .totals-table td {
+      padding: 10px 16px;
+      font-size: 13px;
     }
     
-    .total-box::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
+    .totals-table .label-cell {
+      text-align: right;
+      color: #666;
+      width: 80%;
     }
     
-    .total-box .total-label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: rgba(255,255,255,0.8);
-      margin-bottom: 8px;
-      position: relative;
-    }
-    
-    .total-box .total-amount {
-      font-size: 42px;
-      font-weight: 800;
-      color: white;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      position: relative;
-    }
-    
-    .total-box .currency {
-      font-size: 24px;
+    .totals-table .value-cell {
+      text-align: right;
       font-weight: 600;
+      color: #1a1a1a;
+    }
+    
+    .totals-table .total-row {
+      background: #e5c100;
+    }
+    
+    .totals-table .total-row td {
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #1a1a1a;
+    }
+    
+    /* Conditions Section */
+    .conditions-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 25px 40px;
+      gap: 40px;
+      border-top: 1px solid #eee;
+    }
+    
+    .conditions-block h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #e5c100;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    
+    .conditions-block p {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.6;
+    }
+    
+    /* Signature Section */
+    .signature-section {
+      padding: 25px 40px;
+      border-top: 1px solid #eee;
+    }
+    
+    .signature-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #e5c100;
+      font-weight: 600;
+      margin-bottom: 30px;
+    }
+    
+    .signature-line {
+      border-bottom: 1px solid #333;
+      width: 250px;
+      padding-bottom: 5px;
+      font-size: 13px;
+      color: #333;
     }
     
     /* Footer */
     .footer {
-      padding: 30px 40px;
-      background: rgba(0,0,0,0.2);
-      border-top: 1px solid rgba(255,255,255,0.05);
-    }
-    
-    .footer-content {
+      background: #1a1a2e;
+      padding: 25px 40px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     
-    .footer-info {
-      display: flex;
-      gap: 30px;
-    }
-    
-    .footer-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: rgba(255,255,255,0.5);
-      font-size: 13px;
-    }
-    
-    .footer-item .dot {
-      width: 6px;
-      height: 6px;
-      background: #667eea;
-      border-radius: 50%;
-    }
-    
-    .validity {
-      background: rgba(102,126,234,0.1);
-      border: 1px solid rgba(102,126,234,0.2);
-      border-radius: 10px;
-      padding: 10px 20px;
+    .footer-contact p {
       font-size: 12px;
-      color: #a5b4fc;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 3px;
     }
     
-    /* Botones de impresión */
+    .footer-right {
+      text-align: right;
+    }
+    
+    .footer-phone {
+      font-size: 13px;
+      color: white;
+      margin-bottom: 5px;
+    }
+    
+    .footer-website {
+      display: inline-block;
+      margin-top: 10px;
+      background: #e5c100;
+      color: #1a1a1a;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+    
+    /* Print Actions */
     .print-actions {
-      max-width: 900px;
-      margin: 30px auto 0;
+      max-width: 800px;
+      margin: 25px auto 0;
       display: flex;
       justify-content: center;
-      gap: 15px;
+      gap: 12px;
     }
     
     .print-actions button {
-      padding: 14px 32px;
+      padding: 12px 28px;
       border: none;
-      border-radius: 12px;
-      font-size: 15px;
+      border-radius: 8px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
       font-family: 'Inter', sans-serif;
     }
     
     .btn-print {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #1a1a2e;
       color: white;
-      box-shadow: 0 10px 30px rgba(102,126,234,0.4);
     }
     
     .btn-print:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 15px 40px rgba(102,126,234,0.5);
+      background: #2a2a4e;
     }
     
     .btn-close {
-      background: rgba(255,255,255,0.1);
-      color: white;
-      border: 1px solid rgba(255,255,255,0.2);
+      background: #f0f0f0;
+      color: #333;
     }
     
     .btn-close:hover {
-      background: rgba(255,255,255,0.15);
+      background: #e0e0e0;
     }
     
-    /* Estilos de impresión */
+    /* Print Styles */
     @media print {
       body {
         background: white !important;
@@ -823,13 +780,6 @@ export default function DashboardPage() {
       
       .container {
         box-shadow: none !important;
-        border: none !important;
-        background: white !important;
-      }
-      
-      .header {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
       }
       
       .print-actions {
@@ -847,78 +797,75 @@ export default function DashboardPage() {
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <div class="header-content">
-        <div class="company-section">
-          <div class="company-logo">
-            ${companySettings?.company_logo_url 
-              ? `<img src="${companySettings.company_logo_url}" alt="Logo" />`
-              : `<span class="company-logo-text">A</span>`
-            }
-          </div>
-          <div class="company-info">
-            <h1>${companySettings?.company_name || 'APEX CONSULTING'}</h1>
-            <p>Soluciones Tecnológicas de Alto Impacto</p>
-          </div>
+      <div class="company-section">
+        <div class="company-logo">
+          ${companySettings?.company_logo_url 
+            ? `<img src="${companySettings.company_logo_url}" alt="Logo" />`
+            : `<span class="company-logo-text">A</span>`
+          }
         </div>
-        <div class="budget-badge">
-          <h2>Presupuesto</h2>
-          <div class="number">#${budget.number}</div>
-          <div class="date">${currentDate}</div>
+        <div class="company-info">
+          <h1>${companySettings?.company_name || 'APEX CONSULTING'}</h1>
+          <p>Consultoría Integral</p>
         </div>
+      </div>
+      <div class="budget-title">
+        <h2>PRESUPUESTO</h2>
+        <div class="number">Nº ${budget.number}</div>
       </div>
     </div>
     
     <!-- Client Section -->
     <div class="client-section">
-      <div class="client-card">
-        <div class="client-info-box">
-          <div class="label">Cliente</div>
-          <div class="value">${budget.client_name}</div>
+      <div class="client-row">
+        <div class="client-info">
+          <div class="client-label">CLIENTE</div>
+          <div class="client-name">${budget.client_name}</div>
+          <div class="client-role">${budget.project_name}</div>
         </div>
-        <div class="client-info-box">
-          <div class="label">Proyecto</div>
-          <div class="value">${budget.project_name}</div>
+        <div class="dates-info">
+          <div class="date-row"><strong>Fecha:</strong> ${formatDate(today)}</div>
+          <div class="date-row"><strong>Vencimiento:</strong> ${formatDate(dueDate)}</div>
         </div>
       </div>
     </div>
     
-    ${budget.project_description ? `
-    <!-- Project Description -->
-    <div class="project-description">
-      <div class="description-card">
-        <h3>Descripción del Proyecto</h3>
-        <p>${budget.project_description}</p>
+    <!-- Contact & Payment Info -->
+    <div class="info-section">
+      <div class="info-block">
+        <h4>PERSONA DE CONTACTO</h4>
+        <p><strong>Teléfono:</strong> ${companySettings?.company_phone || '(00) 0000-0000'}</p>
+        <p><strong>Email:</strong> ${companySettings?.company_email || 'contacto@empresa.com'}</p>
+      </div>
+      <div class="info-block">
+        <h4>DATOS DE PAGO</h4>
+        <p><strong>Cuenta:</strong> XXXXXX</p>
+        <p>${companySettings?.company_name || 'Empresa SRL'}</p>
       </div>
     </div>
-    ` : ''}
     
     <!-- Items Table -->
     <div class="items-section">
-      <div class="items-header">
-        <h3>Desglose del Presupuesto</h3>
-        <span class="items-count">${budgetItems.length} ítem${budgetItems.length !== 1 ? 's' : ''}</span>
-      </div>
       <table class="items-table">
         <thead>
           <tr>
-            <th style="width: 30%">Descripción</th>
-            <th style="width: 20%">Cantidad</th>
-            <th style="width: 20%">Tarifa Unitaria</th>
-            <th style="width: 20%">Subtotal</th>
+            <th style="width: 8%">#</th>
+            <th style="width: 42%">DESCRIPCIÓN</th>
+            <th style="width: 18%">PRECIO</th>
+            <th style="width: 12%">CANTIDAD</th>
+            <th style="width: 20%">TOTAL</th>
           </tr>
         </thead>
         <tbody>
           ${budgetItems.length === 0 
-            ? `<tr><td colspan="4" style="text-align: center; color: rgba(255,255,255,0.5); padding: 40px;">No hay ítems en el presupuesto</td></tr>`
-            : budgetItems.map((item: any) => `
+            ? `<tr><td colspan="5" style="text-align: center; color: #999; padding: 40px;">No hay ítems en el presupuesto</td></tr>`
+            : budgetItems.map((item: any, index: number) => `
               <tr>
-                <td>
-                  ${item.category ? `<span class="item-category">${item.category}</span><br>` : ''}
-                  <span class="item-description">${item.description}</span>
-                </td>
-                <td class="item-quantity">${item.quantity} ${item.unit || 'unidades'}</td>
-                <td class="item-rate">$${Number(item.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-                <td class="item-subtotal">$${(item.quantity * item.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+                <td>${index + 1}</td>
+                <td class="item-description">${item.description}</td>
+                <td>$${Number(item.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+                <td>${item.quantity}</td>
+                <td>$${(item.quantity * item.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
               </tr>
             `).join('')
           }
@@ -928,32 +875,48 @@ export default function DashboardPage() {
     
     <!-- Totals Section -->
     <div class="totals-section">
-      <div class="total-card">
-        <div class="total-box">
-          <div class="total-label">Total del Presupuesto</div>
-          <div class="total-amount">
-            <span class="currency">$</span>${totalBudget.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-          </div>
-        </div>
+      <table class="totals-table">
+        <tr>
+          <td class="label-cell">Subtotal</td>
+          <td class="value-cell">$${totalBudget.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+        </tr>
+        <tr>
+          <td class="label-cell">Impuestos 10.5%</td>
+          <td class="value-cell">$${(totalBudget * 0.105).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+        </tr>
+        <tr class="total-row">
+          <td class="label-cell">TOTAL</td>
+          <td class="value-cell">$${(totalBudget * 1.105).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+        </tr>
+      </table>
+    </div>
+    
+    <!-- Conditions Section -->
+    <div class="conditions-section">
+      <div class="conditions-block">
+        <h4>CONDICIONES DE PAGO</h4>
+        <p>El presente presupuesto tiene una validez de 30 días a partir de la fecha de emisión. Pasado este plazo, los precios podrían sufrir modificaciones.</p>
       </div>
+      <div class="conditions-block">
+        <h4>OTROS DETALLES</h4>
+        <p>${budget.project_description || 'Presupuesto sujeto a disponibilidad. Forma de pago a convenir según acuerdo comercial.'}</p>
+      </div>
+    </div>
+    
+    <!-- Signature Section -->
+    <div class="signature-section">
+      <div class="signature-label">FIRMA</div>
+      <div class="signature-line">${budget.client_name}</div>
     </div>
     
     <!-- Footer -->
     <div class="footer">
-      <div class="footer-content">
-        <div class="footer-info">
-          <div class="footer-item">
-            <span class="dot"></span>
-            Presupuesto generado automáticamente
-          </div>
-          <div class="footer-item">
-            <span class="dot"></span>
-            ${companySettings?.company_name || 'APEX CONSULTING'}
-          </div>
-        </div>
-        <div class="validity">
-          Válido por 30 días
-        </div>
+      <div class="footer-contact">
+        <p>${companySettings?.company_email || 'contacto@empresa.com'}</p>
+      </div>
+      <div class="footer-right">
+        <div class="footer-phone">${companySettings?.company_phone || '(00) 0000-0000'}</div>
+        <a class="footer-website" href="#">www.${(companySettings?.company_name || 'empresa').toLowerCase().replace(/\\s+/g, '')}.com</a>
       </div>
     </div>
   </div>
