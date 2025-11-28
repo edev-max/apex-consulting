@@ -77,6 +77,29 @@ export default function InteractiveBudgetReport() {
     }
   }, [user, router])
 
+  // Cargar presupuesto desde sessionStorage si viene desde el reporte de deudas
+  useEffect(() => {
+    const loadBudgetData = sessionStorage.getItem('loadBudget')
+    if (loadBudgetData) {
+      try {
+        const budget = JSON.parse(loadBudgetData)
+        setClientName(budget.client_name)
+        setProjectName(budget.project_name)
+        setProjectDescription(budget.project_description || "")
+        setBudgetItems(budget.items || [])
+        setReportNumber(parseInt(budget.number, 10) || 589)
+        setStartCorrelativeFrom(budget.number)
+        setSelectedBudget(budget)
+        setIsViewingMode(true)
+        
+        // Limpiar sessionStorage después de cargar
+        sessionStorage.removeItem('loadBudget')
+      } catch (error) {
+        console.error("Error loading budget from session:", error)
+      }
+    }
+  }, [])
+
   // Cargar el siguiente número de presupuesto al montar el componente
   useEffect(() => {
     const loadNextNumber = async () => {

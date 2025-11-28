@@ -332,6 +332,308 @@ export default function DashboardPage() {
     setShowRegisterPaymentDialog(true)
   }
 
+  // Función para ver/editar un presupuesto desde el reporte de deudas
+  const handleViewBudgetFromDebtReport = (budget: Budget) => {
+    // Guardar el presupuesto en sessionStorage para cargarlo en budget-report
+    sessionStorage.setItem('loadBudget', JSON.stringify({
+      id: budget.id,
+      number: budget.number,
+      client_name: budget.client_name,
+      project_name: budget.project_name,
+      project_description: budget.project_description || '',
+      total: budget.total,
+      items: budget.items || [],
+      date: budget.date,
+      status: budget.status,
+    }))
+    router.push('/budget-report?mode=view')
+  }
+
+  // Función para reimprimir un presupuesto
+  const handlePrintBudgetFromDebtReport = (budget: Budget) => {
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
+
+    const currentDate = new Date(budget.date).toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+
+    const budgetItems = budget.items || []
+    const totalBudget = budgetItems.reduce((sum: number, item: any) => sum + (item.quantity * item.rate), 0)
+
+    const printHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Presupuesto #${budget.number} - ${budget.project_name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      padding: 40px; 
+      color: #333; 
+      background: white;
+      line-height: 1.6;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    
+    .header { 
+      display: flex; 
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 40px; 
+      padding-bottom: 20px; 
+      border-bottom: 3px solid #3b82f6; 
+    }
+    .company-info h1 { 
+      color: #1e40af; 
+      font-size: 28px; 
+      font-weight: bold; 
+      margin-bottom: 5px; 
+    }
+    .company-logo { 
+      width: 80px; 
+      height: 80px; 
+      object-fit: contain; 
+    }
+    .budget-number {
+      text-align: right;
+      background: #f3f4f6;
+      padding: 15px 20px;
+      border-radius: 8px;
+    }
+    .budget-number h2 {
+      color: #1e40af;
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+    .budget-number p {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    
+    .client-info {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+    .client-info h3 {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .client-info h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .client-info p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    
+    .project-details {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    .project-details h3 {
+      color: #374151;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .project-details p {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-bottom: 30px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th { 
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      padding: 14px 12px; 
+      text-align: left; 
+      font-weight: 600; 
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    td { 
+      padding: 14px 12px; 
+      font-size: 14px; 
+      border-bottom: 1px solid #e5e7eb; 
+      background: white;
+    }
+    tr:hover td {
+      background: #f9fafb;
+    }
+    
+    .total-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .total-box {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 20px 40px;
+      border-radius: 12px;
+      text-align: right;
+    }
+    .total-box p {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+    .total-box h2 {
+      font-size: 32px;
+      font-weight: bold;
+    }
+    
+    .footer { 
+      text-align: center; 
+      margin-top: 50px; 
+      padding-top: 20px; 
+      border-top: 2px solid #e5e7eb; 
+      color: #6b7280; 
+      font-size: 13px;
+    }
+    
+    .no-print { 
+      text-align: center; 
+      margin-top: 30px; 
+      padding-top: 20px;
+      border-top: 2px solid #e5e7eb;
+    }
+    .no-print button {
+      padding: 12px 24px;
+      margin: 0 8px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .print-btn {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+    }
+    .print-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    .close-btn {
+      background: #6b7280;
+      color: white;
+    }
+    .close-btn:hover {
+      background: #4b5563;
+    }
+    
+    @media print {
+      body { padding: 20px; }
+      .no-print { display: none; }
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="company-info">
+        ${companySettings?.company_logo_url ? `<img src="${companySettings.company_logo_url}" alt="Logo" class="company-logo" style="margin-bottom: 10px;" />` : ''}
+        <h1>${companySettings?.company_name || 'APEX CONSULTING'}</h1>
+        <p style="color: #6b7280; font-size: 14px;">Soluciones Tecnológicas</p>
+      </div>
+      <div class="budget-number">
+        <h2>Presupuesto #${budget.number}</h2>
+        <p>Fecha: ${currentDate}</p>
+      </div>
+    </div>
+    
+    <div class="client-info">
+      <h3>Cliente</h3>
+      <h2>${budget.client_name}</h2>
+      <p><strong>Proyecto:</strong> ${budget.project_name}</p>
+    </div>
+    
+    ${budget.project_description ? `
+    <div class="project-details">
+      <h3>Descripción del Proyecto</h3>
+      <p>${budget.project_description}</p>
+    </div>
+    ` : ''}
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Categoría</th>
+          <th>Descripción</th>
+          <th style="text-align: center;">Cantidad</th>
+          <th style="text-align: right;">Tarifa</th>
+          <th style="text-align: right;">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${budgetItems.map((item: any) => `
+          <tr>
+            <td>${item.category || '-'}</td>
+            <td>${item.description}</td>
+            <td style="text-align: center;">${item.quantity} ${item.unit || ''}</td>
+            <td style="text-align: right;">$${Number(item.rate).toLocaleString()}</td>
+            <td style="text-align: right; font-weight: 600;">$${(item.quantity * item.rate).toLocaleString()}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    
+    <div class="total-section">
+      <div class="total-box">
+        <p>TOTAL DEL PRESUPUESTO</p>
+        <h2>$${totalBudget.toLocaleString()}</h2>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>Este presupuesto es válido por 30 días a partir de la fecha de emisión.</p>
+      <p style="margin-top: 5px;">${companySettings?.company_name || 'APEX CONSULTING'} - Gracias por confiar en nosotros</p>
+    </div>
+    
+    <div class="no-print">
+      <button onclick="window.print()" class="print-btn">
+        Imprimir / Guardar PDF
+      </button>
+      <button onclick="window.close()" class="close-btn">
+        Cerrar
+      </button>
+    </div>
+  </div>
+</body>
+</html>
+`
+    printWindow.document.write(printHTML)
+    printWindow.document.close()
+  }
+
   const getTabTitle = (tab: string) => {
     switch (tab) {
       case "dashboard":
@@ -416,6 +718,8 @@ export default function DashboardPage() {
               companyName={companySettings?.company_name || "APEX CONSULTING"}
               companyLogoUrl={companySettings?.company_logo_url || null}
               onRegisterPayment={handleOpenPaymentDialog}
+              onViewBudget={handleViewBudgetFromDebtReport}
+              onPrintBudget={handlePrintBudgetFromDebtReport}
               budgetPayments={budgetPayments}
               getPaymentsByBudget={getPaymentsByBudget}
             />
