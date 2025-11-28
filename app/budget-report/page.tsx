@@ -7,7 +7,22 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Trash2Icon, PrinterIcon, ArrowLeftIcon, SaveIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { 
+  Trash2Icon, 
+  PrinterIcon, 
+  ArrowLeftIcon, 
+  SaveIcon, 
+  FolderOpenIcon, 
+  FileTextIcon,
+  ChevronRightIcon,
+  CalendarIcon,
+  DollarSignIcon,
+  PlusIcon,
+  XIcon,
+  EyeIcon,
+  SearchIcon
+} from "lucide-react"
 import Link from "next/link"
 import { useBudgetStorage } from "@/hooks/useBudgetStorage"
 import { useAuth } from "@/hooks/useAuth"
@@ -23,11 +38,23 @@ interface BudgetItem {
   unit: string
 }
 
+interface SavedBudget {
+  id: string
+  number: string
+  client_name: string
+  project_name: string
+  project_description?: string
+  total: number
+  date: string
+  status: string
+  items?: BudgetItem[]
+}
+
 export default function InteractiveBudgetReport() {
   const { user } = useAuth()
   const router = useRouter()
   const { saveBudget, getNextBudgetNumber } = useBudgetStorage()
-  const { companySettings: settings } = useSupabaseData()
+  const { companySettings: settings, budgets: savedBudgets } = useSupabaseData()
 
   const [clientName, setClientName] = useState<string>("")
   const [projectName, setProjectName] = useState<string>("")
@@ -36,6 +63,12 @@ export default function InteractiveBudgetReport() {
 
   const [reportNumber, setReportNumber] = useState<number>(589)
   const [startCorrelativeFrom, setStartCorrelativeFrom] = useState<string>("589")
+  
+  // Estados para el panel de presupuestos guardados
+  const [showSavedBudgets, setShowSavedBudgets] = useState<boolean>(false)
+  const [selectedBudget, setSelectedBudget] = useState<SavedBudget | null>(null)
+  const [isViewingMode, setIsViewingMode] = useState<boolean>(false)
+  const [searchTerm, setSearchTerm] = useState<string>("")
 
   // Redirigir si no hay usuario autenticado
   useEffect(() => {
@@ -116,6 +149,8 @@ export default function InteractiveBudgetReport() {
       setProjectName("")
       setProjectDescription("")
       setBudgetItems([])
+      setIsViewingMode(false)
+      setSelectedBudget(null)
 
       // Incrementar número para el siguiente presupuesto
       const nextNumber = reportNumber + 1
@@ -124,25 +159,204 @@ export default function InteractiveBudgetReport() {
     }
   }
 
+  // Función para cargar un presupuesto guardado
+  const handleLoadBudget = (budget: SavedBudget) => {
+    setClientName(budget.client_name)
+    setProjectName(budget.project_name)
+    setProjectDescription(budget.project_description || "")
+    setBudgetItems(budget.items || [])
+    setReportNumber(parseInt(budget.number, 10) || 589)
+    setStartCorrelativeFrom(budget.number)
+    setSelectedBudget(budget)
+    setIsViewingMode(true)
+    setShowSavedBudgets(false)
+  }
+
+  // Función para crear un nuevo presupuesto
+  const handleNewBudget = async () => {
+    setClientName("")
+    setProjectName("")
+    setProjectDescription("")
+    setBudgetItems([])
+    setIsViewingMode(false)
+    setSelectedBudget(null)
+    
+    const nextNumber = await getNextBudgetNumber()
+    setReportNumber(nextNumber)
+    setStartCorrelativeFrom(nextNumber.toString())
+  }
+
+  // Filtrar presupuestos por búsqueda
+  const filteredBudgets = savedBudgets.filter(budget => 
+    budget.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    budget.project_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    budget.number.includes(searchTerm)
+  )
+
   if (!user) {
     return null // El useEffect se encargará de redirigir
   }
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-6 bg-[#0a0a0f] min-h-screen">
+      {/* Panel de Presupuestos Guardados - Overlay */}
+      {showSavedBudgets && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-4xl max-h-[85vh] overflow-hidden border border-white/10 bg-[#12121a] shadow-2xl animate-in fade-in zoom-in duration-300">
+            <CardHeader className="pb-4 border-b border-white/10 bg-gradient-to-r from-blue-600/10 to-purple-600/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-blue-600/20 border border-blue-500/30">
+                    <FolderOpenIcon className="h-6 w-6 text-blue-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl text-white">Presupuestos Guardados</CardTitle>
+                    <CardDescription className="text-gray-400">
+                      {savedBudgets.length} presupuesto{savedBudgets.length !== 1 ? 's' : ''} disponible{savedBudgets.length !== 1 ? 's' : ''}
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setShowSavedBudgets(false)}
+                  className="hover:bg-white/10 rounded-full"
+                >
+                  <XIcon className="h-5 w-5" />
+                </Button>
+              </div>
+              
+              {/* Barra de búsqueda */}
+              <div className="relative mt-4">
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input 
+                  placeholder="Buscar por cliente, proyecto o número..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-white/5 border-white/10 focus:border-blue-500/50 transition-colors"
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 overflow-auto max-h-[calc(85vh-180px)]">
+              {filteredBudgets.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <FileTextIcon className="h-16 w-16 mb-4 opacity-30" />
+                  <p className="text-lg font-medium">No se encontraron presupuestos</p>
+                  <p className="text-sm mt-1">
+                    {searchTerm ? "Intenta con otros términos de búsqueda" : "Crea tu primer presupuesto"}
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {filteredBudgets.map((budget, index) => (
+                    <div 
+                      key={budget.id}
+                      className="p-4 hover:bg-white/5 transition-all duration-200 cursor-pointer group"
+                      onClick={() => handleLoadBudget(budget)}
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600/20 to-purple-600/20 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span className="text-sm font-bold text-blue-400">#{budget.number}</span>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-white truncate">{budget.project_name}</h4>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${
+                                  budget.status === 'paid' 
+                                    ? 'border-green-500/50 text-green-400 bg-green-500/10' 
+                                    : budget.status === 'pending'
+                                    ? 'border-yellow-500/50 text-yellow-400 bg-yellow-500/10'
+                                    : 'border-gray-500/50 text-gray-400 bg-gray-500/10'
+                                }`}
+                              >
+                                {budget.status === 'paid' ? 'Pagado' : budget.status === 'pending' ? 'Pendiente' : budget.status}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-400 truncate">{budget.client_name}</p>
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <CalendarIcon className="h-3 w-3" />
+                                {new Date(budget.date).toLocaleDateString("es-ES")}
+                              </span>
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <DollarSignIcon className="h-3 w-3" />
+                                {budget.items?.length || 0} ítem{(budget.items?.length || 0) !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-green-400">${budget.total.toFixed(2)}</p>
+                            <p className="text-xs text-gray-500">Total</p>
+                          </div>
+                          <ChevronRightIcon className="h-5 w-5 text-gray-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Input Form Section */}
       <Card className="w-full lg:w-1/3 shadow-lg print:hidden border border-white/10 bg-white/5">
         <CardHeader className="pb-4 border-b border-white/10">
           <div className="flex items-center gap-2 mb-2">
             <Link href="/dashboard">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="hover:bg-white/10">
                 <ArrowLeftIcon className="h-4 w-4" />
               </Button>
             </Link>
-            <div>
-              <CardTitle className="text-white">Configurar Presupuesto</CardTitle>
-              <CardDescription className="text-gray-400">Ingresa los detalles del cliente y las líneas de presupuesto.</CardDescription>
+            <div className="flex-1">
+              <CardTitle className="text-white flex items-center gap-2">
+                {isViewingMode ? (
+                  <>
+                    <EyeIcon className="h-5 w-5 text-blue-400" />
+                    Viendo Presupuesto #{selectedBudget?.number}
+                  </>
+                ) : (
+                  "Configurar Presupuesto"
+                )}
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                {isViewingMode 
+                  ? "Presupuesto cargado desde tus guardados" 
+                  : "Ingresa los detalles del cliente y las líneas de presupuesto."
+                }
+              </CardDescription>
             </div>
+          </div>
+          
+          {/* Botones de acción rápida */}
+          <div className="flex gap-2 mt-3">
+            <Button 
+              onClick={() => setShowSavedBudgets(true)} 
+              variant="outline" 
+              size="sm"
+              className="flex-1 bg-gradient-to-r from-blue-600/10 to-purple-600/10 border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-600/20 transition-all"
+            >
+              <FolderOpenIcon className="h-4 w-4 mr-2" />
+              Ver Guardados ({savedBudgets.length})
+            </Button>
+            {isViewingMode && (
+              <Button 
+                onClick={handleNewBudget} 
+                variant="outline" 
+                size="sm"
+                className="flex-1 bg-gradient-to-r from-green-600/10 to-emerald-600/10 border-green-500/30 hover:border-green-500/50 hover:bg-green-600/20 transition-all"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Nuevo
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
@@ -241,11 +455,13 @@ export default function InteractiveBudgetReport() {
           </Button>
 
           <div className="flex gap-2">
-            <Button onClick={handleSaveBudget} className="flex-1 bg-transparent" variant="outline">
-              <SaveIcon className="mr-2 h-4 w-4" />
-              Guardar Presupuesto
-            </Button>
-            <Button onClick={handlePrint} className="flex-1">
+            {!isViewingMode && (
+              <Button onClick={handleSaveBudget} className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0" variant="outline">
+                <SaveIcon className="mr-2 h-4 w-4" />
+                Guardar Presupuesto
+              </Button>
+            )}
+            <Button onClick={handlePrint} className={`${isViewingMode ? 'flex-1' : ''}`}>
               <PrinterIcon className="mr-2 h-4 w-4" />
               Imprimir
             </Button>
