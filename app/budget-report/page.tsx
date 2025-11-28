@@ -145,7 +145,636 @@ export default function InteractiveBudgetReport() {
   const totalBudget = budgetItems.reduce((sum, item) => sum + item.quantity * item.rate, 0)
 
   const handlePrint = () => {
-    window.print()
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
+
+    const currentDate = new Date().toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+
+    const printHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Presupuesto #${reportNumber.toString().padStart(4, "0")} - ${projectName}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      padding: 40px;
+      color: #ffffff;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255,255,255,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    
+    /* Header con gradiente espectacular */
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    
+    @keyframes shimmer {
+      0%, 100% { transform: translateX(-50%) rotate(0deg); }
+      50% { transform: translateX(0%) rotate(5deg); }
+    }
+    
+    .header-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    
+    .company-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    
+    .company-logo {
+      width: 70px;
+      height: 70px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      overflow: hidden;
+    }
+    
+    .company-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    
+    .company-logo-text {
+      font-size: 32px;
+      font-weight: 800;
+      color: white;
+    }
+    
+    .company-info h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      margin-bottom: 4px;
+    }
+    
+    .company-info p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+      font-weight: 500;
+    }
+    
+    .budget-badge {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 16px;
+      padding: 20px 30px;
+      text-align: right;
+    }
+    
+    .budget-badge h2 {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+    }
+    
+    .budget-badge .number {
+      font-size: 32px;
+      font-weight: 800;
+      color: white;
+    }
+    
+    .budget-badge .date {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 8px;
+    }
+    
+    /* Sección del cliente */
+    .client-section {
+      padding: 40px;
+      background: linear-gradient(180deg, rgba(102,126,234,0.1) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .client-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+    
+    .client-info-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    
+    .client-info-box .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .client-info-box .value {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+    }
+    
+    .client-info-box .sub-value {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 4px;
+    }
+    
+    /* Descripción del proyecto */
+    .project-description {
+      padding: 0 40px 40px;
+    }
+    
+    .description-card {
+      background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+      border: 1px solid rgba(102,126,234,0.2);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    
+    .description-card h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .description-card h3::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: #667eea;
+      border-radius: 50%;
+    }
+    
+    .description-card p {
+      font-size: 15px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.8);
+    }
+    
+    /* Tabla de items */
+    .items-section {
+      padding: 0 40px 40px;
+    }
+    
+    .items-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .items-header h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+    }
+    
+    .items-count {
+      background: rgba(102,126,234,0.2);
+      color: #667eea;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+    
+    .items-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    
+    .items-table thead {
+      background: linear-gradient(135deg, rgba(102,126,234,0.3) 0%, rgba(118,75,162,0.3) 100%);
+    }
+    
+    .items-table th {
+      padding: 18px 20px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .items-table th:last-child {
+      text-align: right;
+    }
+    
+    .items-table td {
+      padding: 20px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.9);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.02);
+    }
+    
+    .items-table tbody tr:hover td {
+      background: rgba(102,126,234,0.05);
+    }
+    
+    .items-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .items-table td:last-child {
+      text-align: right;
+      font-weight: 600;
+      color: white;
+    }
+    
+    .item-category {
+      display: inline-block;
+      background: rgba(102,126,234,0.15);
+      color: #a5b4fc;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+    }
+    
+    .item-description {
+      font-weight: 500;
+      color: white;
+    }
+    
+    .item-quantity {
+      color: rgba(255,255,255,0.7);
+    }
+    
+    .item-rate {
+      color: rgba(255,255,255,0.7);
+    }
+    
+    .item-subtotal {
+      font-size: 15px;
+      font-weight: 700;
+      color: #10b981 !important;
+    }
+    
+    /* Sección de totales */
+    .totals-section {
+      padding: 40px;
+      background: linear-gradient(180deg, transparent 0%, rgba(16,185,129,0.05) 100%);
+    }
+    
+    .total-card {
+      display: flex;
+      justify-content: flex-end;
+    }
+    
+    .total-box {
+      background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+      border-radius: 20px;
+      padding: 30px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 
+        0 20px 40px rgba(16, 185, 129, 0.3),
+        0 0 0 1px rgba(255,255,255,0.1);
+    }
+    
+    .total-box::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
+    }
+    
+    .total-box .total-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 8px;
+      position: relative;
+    }
+    
+    .total-box .total-amount {
+      font-size: 42px;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      position: relative;
+    }
+    
+    .total-box .currency {
+      font-size: 24px;
+      font-weight: 600;
+    }
+    
+    /* Footer */
+    .footer {
+      padding: 30px 40px;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .footer-info {
+      display: flex;
+      gap: 30px;
+    }
+    
+    .footer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+    }
+    
+    .footer-item .dot {
+      width: 6px;
+      height: 6px;
+      background: #667eea;
+      border-radius: 50%;
+    }
+    
+    .validity {
+      background: rgba(102,126,234,0.1);
+      border: 1px solid rgba(102,126,234,0.2);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 12px;
+      color: #a5b4fc;
+    }
+    
+    /* Botones de impresión */
+    .print-actions {
+      max-width: 900px;
+      margin: 30px auto 0;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+    
+    .print-actions button {
+      padding: 14px 32px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .btn-print {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 10px 30px rgba(102,126,234,0.4);
+    }
+    
+    .btn-print:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 40px rgba(102,126,234,0.5);
+    }
+    
+    .btn-close {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .btn-close:hover {
+      background: rgba(255,255,255,0.15);
+    }
+    
+    /* Estilos de impresión */
+    @media print {
+      body {
+        background: white !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .container {
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+      }
+      
+      .header {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .print-actions {
+        display: none !important;
+      }
+      
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <div class="company-section">
+          <div class="company-logo">
+            ${settings?.company_logo_url 
+              ? `<img src="${settings.company_logo_url}" alt="Logo" />`
+              : `<span class="company-logo-text">A</span>`
+            }
+          </div>
+          <div class="company-info">
+            <h1>${settings?.company_name || 'APEX CONSULTING'}</h1>
+            <p>Soluciones Tecnológicas de Alto Impacto</p>
+          </div>
+        </div>
+        <div class="budget-badge">
+          <h2>Presupuesto</h2>
+          <div class="number">#${reportNumber.toString().padStart(4, "0")}</div>
+          <div class="date">${currentDate}</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Client Section -->
+    <div class="client-section">
+      <div class="client-card">
+        <div class="client-info-box">
+          <div class="label">Cliente</div>
+          <div class="value">${clientName || '[Nombre del Cliente]'}</div>
+        </div>
+        <div class="client-info-box">
+          <div class="label">Proyecto</div>
+          <div class="value">${projectName || '[Nombre del Proyecto]'}</div>
+        </div>
+      </div>
+    </div>
+    
+    ${projectDescription ? `
+    <!-- Project Description -->
+    <div class="project-description">
+      <div class="description-card">
+        <h3>Descripción del Proyecto</h3>
+        <p>${projectDescription}</p>
+      </div>
+    </div>
+    ` : ''}
+    
+    <!-- Items Table -->
+    <div class="items-section">
+      <div class="items-header">
+        <h3>Desglose del Presupuesto</h3>
+        <span class="items-count">${budgetItems.length} ítem${budgetItems.length !== 1 ? 's' : ''}</span>
+      </div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th style="width: 30%">Descripción</th>
+            <th style="width: 20%">Cantidad</th>
+            <th style="width: 20%">Tarifa Unitaria</th>
+            <th style="width: 20%">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${budgetItems.length === 0 
+            ? `<tr><td colspan="4" style="text-align: center; color: rgba(255,255,255,0.5); padding: 40px;">No hay ítems en el presupuesto</td></tr>`
+            : budgetItems.map((item) => `
+              <tr>
+                <td>
+                  ${item.category ? `<span class="item-category">${item.category}</span><br>` : ''}
+                  <span class="item-description">${item.description}</span>
+                </td>
+                <td class="item-quantity">${item.quantity} ${item.unit || 'unidades'}</td>
+                <td class="item-rate">$${Number(item.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+                <td class="item-subtotal">$${(item.quantity * item.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            `).join('')
+          }
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Totals Section -->
+    <div class="totals-section">
+      <div class="total-card">
+        <div class="total-box">
+          <div class="total-label">Total del Presupuesto</div>
+          <div class="total-amount">
+            <span class="currency">$</span>${totalBudget.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-content">
+        <div class="footer-info">
+          <div class="footer-item">
+            <span class="dot"></span>
+            Presupuesto generado automáticamente
+          </div>
+          <div class="footer-item">
+            <span class="dot"></span>
+            ${settings?.company_name || 'APEX CONSULTING'}
+          </div>
+        </div>
+        <div class="validity">
+          Válido por 30 días
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Print Actions -->
+  <div class="print-actions">
+    <button class="btn-print" onclick="window.print()">
+      🖨️ Imprimir / Guardar PDF
+    </button>
+    <button class="btn-close" onclick="window.close()">
+      ✕ Cerrar
+    </button>
+  </div>
+</body>
+</html>
+`
+    printWindow.document.write(printHTML)
+    printWindow.document.close()
   }
 
   const handleSaveBudget = async () => {

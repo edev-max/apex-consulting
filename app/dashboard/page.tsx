@@ -369,263 +369,603 @@ export default function DashboardPage() {
 <head>
   <meta charset="UTF-8">
   <title>Presupuesto #${budget.number} - ${budget.project_name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     body { 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      padding: 40px; 
-      color: #333; 
-      background: white;
-      line-height: 1.6;
-    }
-    .container { max-width: 800px; margin: 0 auto; }
-    
-    .header { 
-      display: flex; 
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 40px; 
-      padding-bottom: 20px; 
-      border-bottom: 3px solid #3b82f6; 
-    }
-    .company-info h1 { 
-      color: #1e40af; 
-      font-size: 28px; 
-      font-weight: bold; 
-      margin-bottom: 5px; 
-    }
-    .company-logo { 
-      width: 80px; 
-      height: 80px; 
-      object-fit: contain; 
-    }
-    .budget-number {
-      text-align: right;
-      background: #f3f4f6;
-      padding: 15px 20px;
-      border-radius: 8px;
-    }
-    .budget-number h2 {
-      color: #1e40af;
-      font-size: 24px;
-      margin-bottom: 5px;
-    }
-    .budget-number p {
-      color: #6b7280;
-      font-size: 14px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      padding: 40px;
+      color: #ffffff;
     }
     
-    .client-info {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 25px;
-      border-radius: 12px;
-      margin-bottom: 30px;
-    }
-    .client-info h3 {
-      font-size: 14px;
-      opacity: 0.9;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .client-info h2 {
-      font-size: 24px;
-      margin-bottom: 8px;
-    }
-    .client-info p {
-      opacity: 0.9;
-      font-size: 14px;
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255,255,255,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.1);
     }
     
-    .project-details {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 30px;
-    }
-    .project-details h3 {
-      color: #374151;
-      margin-bottom: 10px;
-      font-size: 16px;
-    }
-    .project-details p {
-      color: #6b7280;
-      font-size: 14px;
-    }
-    
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-bottom: 30px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      border-radius: 8px;
+    /* Header con gradiente espectacular */
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      padding: 40px;
+      position: relative;
       overflow: hidden;
     }
-    th { 
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-      color: white;
-      padding: 14px 12px; 
-      text-align: left; 
-      font-weight: 600; 
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    td { 
-      padding: 14px 12px; 
-      font-size: 14px; 
-      border-bottom: 1px solid #e5e7eb; 
-      background: white;
-    }
-    tr:hover td {
-      background: #f9fafb;
+    
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
     }
     
-    .total-section {
+    .header-content {
+      position: relative;
+      z-index: 1;
       display: flex;
-      justify-content: flex-end;
-      margin-top: 20px;
+      justify-content: space-between;
+      align-items: flex-start;
     }
-    .total-box {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    
+    .company-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    
+    .company-logo {
+      width: 70px;
+      height: 70px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      overflow: hidden;
+    }
+    
+    .company-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    
+    .company-logo-text {
+      font-size: 32px;
+      font-weight: 800;
       color: white;
-      padding: 20px 40px;
-      border-radius: 12px;
+    }
+    
+    .company-info h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      margin-bottom: 4px;
+    }
+    
+    .company-info p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+      font-weight: 500;
+    }
+    
+    .budget-badge {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 16px;
+      padding: 20px 30px;
       text-align: right;
     }
-    .total-box p {
+    
+    .budget-badge h2 {
       font-size: 14px;
-      opacity: 0.9;
+      color: rgba(255,255,255,0.8);
+      text-transform: uppercase;
+      letter-spacing: 2px;
       margin-bottom: 5px;
     }
-    .total-box h2 {
+    
+    .budget-badge .number {
       font-size: 32px;
-      font-weight: bold;
+      font-weight: 800;
+      color: white;
     }
     
-    .footer { 
-      text-align: center; 
-      margin-top: 50px; 
-      padding-top: 20px; 
-      border-top: 2px solid #e5e7eb; 
-      color: #6b7280; 
+    .budget-badge .date {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      margin-top: 8px;
+    }
+    
+    /* Sección del cliente */
+    .client-section {
+      padding: 40px;
+      background: linear-gradient(180deg, rgba(102,126,234,0.1) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .client-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+    
+    .client-info-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    
+    .client-info-box .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .client-info-box .value {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+    }
+    
+    /* Descripción del proyecto */
+    .project-description {
+      padding: 0 40px 40px;
+    }
+    
+    .description-card {
+      background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+      border: 1px solid rgba(102,126,234,0.2);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    
+    .description-card h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .description-card h3::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: #667eea;
+      border-radius: 50%;
+    }
+    
+    .description-card p {
+      font-size: 15px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.8);
+    }
+    
+    /* Tabla de items */
+    .items-section {
+      padding: 0 40px 40px;
+    }
+    
+    .items-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .items-header h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+    }
+    
+    .items-count {
+      background: rgba(102,126,234,0.2);
+      color: #667eea;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+    
+    .items-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    
+    .items-table thead {
+      background: linear-gradient(135deg, rgba(102,126,234,0.3) 0%, rgba(118,75,162,0.3) 100%);
+    }
+    
+    .items-table th {
+      padding: 18px 20px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .items-table th:last-child {
+      text-align: right;
+    }
+    
+    .items-table td {
+      padding: 20px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.9);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.02);
+    }
+    
+    .items-table tbody tr:hover td {
+      background: rgba(102,126,234,0.05);
+    }
+    
+    .items-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .items-table td:last-child {
+      text-align: right;
+      font-weight: 600;
+      color: white;
+    }
+    
+    .item-category {
+      display: inline-block;
+      background: rgba(102,126,234,0.15);
+      color: #a5b4fc;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+    }
+    
+    .item-description {
+      font-weight: 500;
+      color: white;
+    }
+    
+    .item-quantity {
+      color: rgba(255,255,255,0.7);
+    }
+    
+    .item-rate {
+      color: rgba(255,255,255,0.7);
+    }
+    
+    .item-subtotal {
+      font-size: 15px;
+      font-weight: 700;
+      color: #10b981 !important;
+    }
+    
+    /* Sección de totales */
+    .totals-section {
+      padding: 40px;
+      background: linear-gradient(180deg, transparent 0%, rgba(16,185,129,0.05) 100%);
+    }
+    
+    .total-card {
+      display: flex;
+      justify-content: flex-end;
+    }
+    
+    .total-box {
+      background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+      border-radius: 20px;
+      padding: 30px 50px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 
+        0 20px 40px rgba(16, 185, 129, 0.3),
+        0 0 0 1px rgba(255,255,255,0.1);
+    }
+    
+    .total-box::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
+    }
+    
+    .total-box .total-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 8px;
+      position: relative;
+    }
+    
+    .total-box .total-amount {
+      font-size: 42px;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      position: relative;
+    }
+    
+    .total-box .currency {
+      font-size: 24px;
+      font-weight: 600;
+    }
+    
+    /* Footer */
+    .footer {
+      padding: 30px 40px;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .footer-info {
+      display: flex;
+      gap: 30px;
+    }
+    
+    .footer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.5);
       font-size: 13px;
     }
     
-    .no-print { 
-      text-align: center; 
-      margin-top: 30px; 
-      padding-top: 20px;
-      border-top: 2px solid #e5e7eb;
-    }
-    .no-print button {
-      padding: 12px 24px;
-      margin: 0 8px;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .print-btn {
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-      color: white;
-    }
-    .print-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    }
-    .close-btn {
-      background: #6b7280;
-      color: white;
-    }
-    .close-btn:hover {
-      background: #4b5563;
+    .footer-item .dot {
+      width: 6px;
+      height: 6px;
+      background: #667eea;
+      border-radius: 50%;
     }
     
+    .validity {
+      background: rgba(102,126,234,0.1);
+      border: 1px solid rgba(102,126,234,0.2);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 12px;
+      color: #a5b4fc;
+    }
+    
+    /* Botones de impresión */
+    .print-actions {
+      max-width: 900px;
+      margin: 30px auto 0;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+    
+    .print-actions button {
+      padding: 14px 32px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .btn-print {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 10px 30px rgba(102,126,234,0.4);
+    }
+    
+    .btn-print:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 40px rgba(102,126,234,0.5);
+    }
+    
+    .btn-close {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .btn-close:hover {
+      background: rgba(255,255,255,0.15);
+    }
+    
+    /* Estilos de impresión */
     @media print {
-      body { padding: 20px; }
-      .no-print { display: none; }
+      body {
+        background: white !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .container {
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+      }
+      
+      .header {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .print-actions {
+        display: none !important;
+      }
+      
       @page {
         size: A4;
-        margin: 15mm;
+        margin: 10mm;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Header -->
     <div class="header">
-      <div class="company-info">
-        ${companySettings?.company_logo_url ? `<img src="${companySettings.company_logo_url}" alt="Logo" class="company-logo" style="margin-bottom: 10px;" />` : ''}
-        <h1>${companySettings?.company_name || 'APEX CONSULTING'}</h1>
-        <p style="color: #6b7280; font-size: 14px;">Soluciones Tecnológicas</p>
-      </div>
-      <div class="budget-number">
-        <h2>Presupuesto #${budget.number}</h2>
-        <p>Fecha: ${currentDate}</p>
+      <div class="header-content">
+        <div class="company-section">
+          <div class="company-logo">
+            ${companySettings?.company_logo_url 
+              ? `<img src="${companySettings.company_logo_url}" alt="Logo" />`
+              : `<span class="company-logo-text">A</span>`
+            }
+          </div>
+          <div class="company-info">
+            <h1>${companySettings?.company_name || 'APEX CONSULTING'}</h1>
+            <p>Soluciones Tecnológicas de Alto Impacto</p>
+          </div>
+        </div>
+        <div class="budget-badge">
+          <h2>Presupuesto</h2>
+          <div class="number">#${budget.number}</div>
+          <div class="date">${currentDate}</div>
+        </div>
       </div>
     </div>
     
-    <div class="client-info">
-      <h3>Cliente</h3>
-      <h2>${budget.client_name}</h2>
-      <p><strong>Proyecto:</strong> ${budget.project_name}</p>
+    <!-- Client Section -->
+    <div class="client-section">
+      <div class="client-card">
+        <div class="client-info-box">
+          <div class="label">Cliente</div>
+          <div class="value">${budget.client_name}</div>
+        </div>
+        <div class="client-info-box">
+          <div class="label">Proyecto</div>
+          <div class="value">${budget.project_name}</div>
+        </div>
+      </div>
     </div>
     
     ${budget.project_description ? `
-    <div class="project-details">
-      <h3>Descripción del Proyecto</h3>
-      <p>${budget.project_description}</p>
+    <!-- Project Description -->
+    <div class="project-description">
+      <div class="description-card">
+        <h3>Descripción del Proyecto</h3>
+        <p>${budget.project_description}</p>
+      </div>
     </div>
     ` : ''}
     
-    <table>
-      <thead>
-        <tr>
-          <th>Categoría</th>
-          <th>Descripción</th>
-          <th style="text-align: center;">Cantidad</th>
-          <th style="text-align: right;">Tarifa</th>
-          <th style="text-align: right;">Subtotal</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${budgetItems.map((item: any) => `
+    <!-- Items Table -->
+    <div class="items-section">
+      <div class="items-header">
+        <h3>Desglose del Presupuesto</h3>
+        <span class="items-count">${budgetItems.length} ítem${budgetItems.length !== 1 ? 's' : ''}</span>
+      </div>
+      <table class="items-table">
+        <thead>
           <tr>
-            <td>${item.category || '-'}</td>
-            <td>${item.description}</td>
-            <td style="text-align: center;">${item.quantity} ${item.unit || ''}</td>
-            <td style="text-align: right;">$${Number(item.rate).toLocaleString()}</td>
-            <td style="text-align: right; font-weight: 600;">$${(item.quantity * item.rate).toLocaleString()}</td>
+            <th style="width: 30%">Descripción</th>
+            <th style="width: 20%">Cantidad</th>
+            <th style="width: 20%">Tarifa Unitaria</th>
+            <th style="width: 20%">Subtotal</th>
           </tr>
-        `).join('')}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          ${budgetItems.length === 0 
+            ? `<tr><td colspan="4" style="text-align: center; color: rgba(255,255,255,0.5); padding: 40px;">No hay ítems en el presupuesto</td></tr>`
+            : budgetItems.map((item: any) => `
+              <tr>
+                <td>
+                  ${item.category ? `<span class="item-category">${item.category}</span><br>` : ''}
+                  <span class="item-description">${item.description}</span>
+                </td>
+                <td class="item-quantity">${item.quantity} ${item.unit || 'unidades'}</td>
+                <td class="item-rate">$${Number(item.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+                <td class="item-subtotal">$${(item.quantity * item.rate).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            `).join('')
+          }
+        </tbody>
+      </table>
+    </div>
     
-    <div class="total-section">
-      <div class="total-box">
-        <p>TOTAL DEL PRESUPUESTO</p>
-        <h2>$${totalBudget.toLocaleString()}</h2>
+    <!-- Totals Section -->
+    <div class="totals-section">
+      <div class="total-card">
+        <div class="total-box">
+          <div class="total-label">Total del Presupuesto</div>
+          <div class="total-amount">
+            <span class="currency">$</span>${totalBudget.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+          </div>
+        </div>
       </div>
     </div>
     
+    <!-- Footer -->
     <div class="footer">
-      <p>Este presupuesto es válido por 30 días a partir de la fecha de emisión.</p>
-      <p style="margin-top: 5px;">${companySettings?.company_name || 'APEX CONSULTING'} - Gracias por confiar en nosotros</p>
+      <div class="footer-content">
+        <div class="footer-info">
+          <div class="footer-item">
+            <span class="dot"></span>
+            Presupuesto generado automáticamente
+          </div>
+          <div class="footer-item">
+            <span class="dot"></span>
+            ${companySettings?.company_name || 'APEX CONSULTING'}
+          </div>
+        </div>
+        <div class="validity">
+          Válido por 30 días
+        </div>
+      </div>
     </div>
-    
-    <div class="no-print">
-      <button onclick="window.print()" class="print-btn">
-        Imprimir / Guardar PDF
-      </button>
-      <button onclick="window.close()" class="close-btn">
-        Cerrar
-      </button>
-    </div>
+  </div>
+  
+  <!-- Print Actions -->
+  <div class="print-actions">
+    <button class="btn-print" onclick="window.print()">
+      🖨️ Imprimir / Guardar PDF
+    </button>
+    <button class="btn-close" onclick="window.close()">
+      ✕ Cerrar
+    </button>
   </div>
 </body>
 </html>
