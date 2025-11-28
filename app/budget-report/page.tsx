@@ -154,9 +154,9 @@ export default function InteractiveBudgetReport() {
       day: "numeric",
     })
 
-    // Calcular fecha de vencimiento (30 días después)
+    // Calcular fecha de vencimiento (7 días después)
     const today = new Date()
-    const dueDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const dueDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
     const formatDate = (date: Date) => {
       return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
     }
@@ -173,7 +173,7 @@ export default function InteractiveBudgetReport() {
     
     body { 
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f5f5f5;
+      background: #0a0a0f;
       min-height: 100vh;
       padding: 30px;
       color: #1a1a1a;
@@ -185,7 +185,7 @@ export default function InteractiveBudgetReport() {
       background: white;
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     }
     
     /* Header */
@@ -194,7 +194,7 @@ export default function InteractiveBudgetReport() {
       justify-content: space-between;
       align-items: flex-start;
       padding: 35px 40px;
-      border-bottom: 3px solid #e5c100;
+      border-bottom: 3px solid #3b82f6;
     }
     
     .company-section {
@@ -206,7 +206,7 @@ export default function InteractiveBudgetReport() {
     .company-logo {
       width: 55px;
       height: 55px;
-      background: #1a1a2e;
+      background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -276,7 +276,7 @@ export default function InteractiveBudgetReport() {
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #e5c100;
+      color: #3b82f6;
       font-weight: 600;
       margin-bottom: 5px;
     }
@@ -307,10 +307,8 @@ export default function InteractiveBudgetReport() {
       color: #1a1a1a;
     }
     
-    /* Contact & Payment Info */
+    /* Details Section (replaces Contact & Payment) */
     .info-section {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
       padding: 25px 40px;
       background: #fafafa;
       border-bottom: 1px solid #eee;
@@ -320,7 +318,7 @@ export default function InteractiveBudgetReport() {
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #e5c100;
+      color: #3b82f6;
       font-weight: 600;
       margin-bottom: 10px;
     }
@@ -329,6 +327,7 @@ export default function InteractiveBudgetReport() {
       font-size: 13px;
       color: #444;
       margin-bottom: 4px;
+      line-height: 1.6;
     }
     
     /* Items Table */
@@ -342,7 +341,7 @@ export default function InteractiveBudgetReport() {
     }
     
     .items-table thead {
-      background: #1a1a2e;
+      background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
     }
     
     .items-table th {
@@ -376,16 +375,16 @@ export default function InteractiveBudgetReport() {
     }
     
     .items-table tbody tr:nth-child(odd) td:first-child {
-      background: #e5c100;
-      color: #1a1a1a;
+      background: #3b82f6;
+      color: white;
       font-weight: 700;
       text-align: center;
       width: 40px;
     }
     
     .items-table tbody tr:nth-child(even) td:first-child {
-      background: #f0d000;
-      color: #1a1a1a;
+      background: #60a5fa;
+      color: white;
       font-weight: 700;
       text-align: center;
       width: 40px;
@@ -439,14 +438,14 @@ export default function InteractiveBudgetReport() {
     }
     
     .totals-table .total-row {
-      background: #e5c100;
+      background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
     }
     
     .totals-table .total-row td {
       padding: 14px 16px;
       font-weight: 700;
       font-size: 15px;
-      color: #1a1a1a;
+      color: white;
     }
     
     /* Conditions Section */
@@ -462,7 +461,7 @@ export default function InteractiveBudgetReport() {
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 1px;
-      color: #e5c100;
+      color: #3b82f6;
       font-weight: 600;
       margin-bottom: 12px;
     }
@@ -473,32 +472,9 @@ export default function InteractiveBudgetReport() {
       line-height: 1.6;
     }
     
-    /* Signature Section */
-    .signature-section {
-      padding: 25px 40px;
-      border-top: 1px solid #eee;
-    }
-    
-    .signature-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #e5c100;
-      font-weight: 600;
-      margin-bottom: 30px;
-    }
-    
-    .signature-line {
-      border-bottom: 1px solid #333;
-      width: 250px;
-      padding-bottom: 5px;
-      font-size: 13px;
-      color: #333;
-    }
-    
     /* Footer */
     .footer {
-      background: #1a1a2e;
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
       padding: 25px 40px;
       display: flex;
       justify-content: space-between;
@@ -534,8 +510,8 @@ export default function InteractiveBudgetReport() {
     .footer-website {
       display: inline-block;
       margin-top: 10px;
-      background: #e5c100;
-      color: #1a1a1a;
+      background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
+      color: white;
       font-size: 12px;
       font-weight: 700;
       padding: 8px 20px;
@@ -564,12 +540,12 @@ export default function InteractiveBudgetReport() {
     }
     
     .btn-print {
-      background: #1a1a2e;
+      background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
       color: white;
     }
     
     .btn-print:hover {
-      background: #2a2a4e;
+      opacity: 0.9;
     }
     
     .btn-close {
@@ -642,17 +618,11 @@ export default function InteractiveBudgetReport() {
       </div>
     </div>
     
-    <!-- Contact & Payment Info -->
+    <!-- Other Details Section -->
     <div class="info-section">
       <div class="info-block">
-        <h4>PERSONA DE CONTACTO</h4>
-        <p><strong>Teléfono:</strong> ${settings?.company_phone || '(00) 0000-0000'}</p>
-        <p><strong>Email:</strong> ${settings?.company_email || 'contacto@empresa.com'}</p>
-      </div>
-      <div class="info-block">
-        <h4>DATOS DE PAGO</h4>
-        <p><strong>Cuenta:</strong> XXXXXX</p>
-        <p>${settings?.company_name || 'Empresa SRL'}</p>
+        <h4>OTROS DETALLES</h4>
+        <p>${projectDescription || 'Presupuesto sujeto a disponibilidad. Forma de pago a convenir según acuerdo comercial.'}</p>
       </div>
     </div>
     
@@ -688,17 +658,9 @@ export default function InteractiveBudgetReport() {
     <!-- Totals Section -->
     <div class="totals-section">
       <table class="totals-table">
-        <tr>
-          <td class="label-cell">Subtotal</td>
-          <td class="value-cell">$${totalBudget.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-        </tr>
-        <tr>
-          <td class="label-cell">Impuestos 10.5%</td>
-          <td class="value-cell">$${(totalBudget * 0.105).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
-        </tr>
         <tr class="total-row">
           <td class="label-cell">TOTAL</td>
-          <td class="value-cell">$${(totalBudget * 1.105).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+          <td class="value-cell">$${totalBudget.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
         </tr>
       </table>
     </div>
@@ -707,28 +669,24 @@ export default function InteractiveBudgetReport() {
     <div class="conditions-section">
       <div class="conditions-block">
         <h4>CONDICIONES DE PAGO</h4>
-        <p>El presente presupuesto tiene una validez de 30 días a partir de la fecha de emisión. Pasado este plazo, los precios podrían sufrir modificaciones.</p>
+        <p>El presente presupuesto tiene una validez de 7 días a partir de la fecha de emisión. Pasado este plazo, los precios podrían sufrir modificaciones.</p>
       </div>
       <div class="conditions-block">
-        <h4>OTROS DETALLES</h4>
-        <p>${projectDescription || 'Presupuesto sujeto a disponibilidad. Forma de pago a convenir según acuerdo comercial.'}</p>
+        <h4>DATOS DE PAGO</h4>
+        <p><strong>Teléfono:</strong> 04242864675</p>
+        <p><strong>Banco:</strong> Banesco</p>
+        <p><strong>Cédula:</strong> V-26682963</p>
       </div>
-    </div>
-    
-    <!-- Signature Section -->
-    <div class="signature-section">
-      <div class="signature-label">FIRMA</div>
-      <div class="signature-line">${clientName || ''}</div>
     </div>
     
     <!-- Footer -->
     <div class="footer">
       <div class="footer-contact">
-        <p>${settings?.company_email || 'contacto@empresa.com'}</p>
+        <p>edwin.dev.21114@gmail.com</p>
       </div>
       <div class="footer-right">
-        <div class="footer-phone">${settings?.company_phone || '(00) 0000-0000'}</div>
-        <a class="footer-website" href="#">www.${(settings?.company_name || 'empresa').toLowerCase().replace(/\s+/g, '')}.com</a>
+        <div class="footer-phone">04242864675</div>
+        <a class="footer-website" href="https://apexconsulting-it.site">apexconsulting-it.site</a>
       </div>
     </div>
   </div>
