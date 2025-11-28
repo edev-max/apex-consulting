@@ -409,11 +409,22 @@ export default function DashboardPage() {
       width: 55px;
       height: 55px;
       background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
-      border-radius: 8px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      position: relative;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(147, 51, 234, 0.25);
+    }
+    
+    .company-logo::before {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
+      border-radius: 12px;
+      z-index: -1;
     }
     
     .company-logo img {
@@ -698,13 +709,16 @@ export default function DashboardPage() {
     .footer-website {
       display: inline-block;
       margin-top: 10px;
-      background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);
+      background: transparent;
       color: white;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 600;
       padding: 8px 20px;
-      border-radius: 4px;
+      border-radius: 6px;
       text-decoration: none;
+      border: 2px solid;
+      border-image: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%) 1;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 51, 234, 0.15) 100%);
     }
     
     /* Print Actions */
