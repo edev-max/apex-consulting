@@ -102,8 +102,11 @@ export function DebtReport({
   const calculateClientDebts = (): ClientDebt[] => {
     const clientMap = new Map<string, ClientDebt>()
 
-    // Procesar presupuestos
+    // Procesar presupuestos (excluir cancelados)
     budgets.forEach((budget) => {
+      // Filtrar presupuestos cancelados
+      if (budget.status === 'cancelled') return
+      
       const existing = clientMap.get(budget.client_name) || {
         clientName: budget.client_name,
         totalBudgets: 0,
@@ -147,8 +150,9 @@ export function DebtReport({
         const client = clientDebts.find((c) => c.clientName === selectedClient)
         if (!client) return null
 
-        // Filtrar solo presupuestos con saldo pendiente
+        // Filtrar solo presupuestos con saldo pendiente y no cancelados
         const budgetsWithDebt = client.budgets.filter((budget) => {
+          if (budget.status === 'cancelled') return false
           const paidAmount = Number(budget.paid_amount || 0)
           const totalAmount = Number(budget.total)
           return paidAmount < totalAmount
