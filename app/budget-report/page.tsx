@@ -21,7 +21,9 @@ import {
   PlusIcon,
   XIcon,
   EyeIcon,
-  SearchIcon
+  SearchIcon,
+  Ban,
+  Edit2
 } from "lucide-react"
 import Link from "next/link"
 import { useBudgetStorage } from "@/hooks/useBudgetStorage"
@@ -68,6 +70,8 @@ export default function InteractiveBudgetReport() {
   const [showSavedBudgets, setShowSavedBudgets] = useState<boolean>(false)
   const [selectedBudget, setSelectedBudget] = useState<SavedBudget | null>(null)
   const [isViewingMode, setIsViewingMode] = useState<boolean>(false)
+  const [isEditMode, setIsEditMode] = useState<boolean>(false)
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState<string>("")
 
   // Redirigir si no hay usuario autenticado
@@ -756,7 +760,7 @@ export default function InteractiveBudgetReport() {
   }
 
   // Función para cargar un presupuesto guardado
-  const handleLoadBudget = (budget: SavedBudget) => {
+  const handleLoadBudget = (budget: SavedBudget, editMode = false) => {
     setClientName(budget.client_name)
     setProjectName(budget.project_name)
     setProjectDescription(budget.project_description || "")
@@ -764,7 +768,9 @@ export default function InteractiveBudgetReport() {
     setReportNumber(parseInt(budget.number, 10) || 589)
     setStartCorrelativeFrom(budget.number)
     setSelectedBudget(budget)
-    setIsViewingMode(true)
+    setIsViewingMode(!editMode)
+    setIsEditMode(editMode)
+    setEditingBudgetId(editMode ? budget.id : null)
     setShowSavedBudgets(false)
   }
 
@@ -775,6 +781,8 @@ export default function InteractiveBudgetReport() {
     setProjectDescription("")
     setBudgetItems([])
     setIsViewingMode(false)
+    setIsEditMode(false)
+    setEditingBudgetId(null)
     setSelectedBudget(null)
     
     const nextNumber = await getNextBudgetNumber()
@@ -847,11 +855,12 @@ export default function InteractiveBudgetReport() {
                   {filteredBudgets.map((budget, index) => (
                     <div 
                       key={budget.id}
-                      className="p-4 hover:bg-white/5 transition-all duration-200 cursor-pointer group"
-                      onClick={() => handleLoadBudget(budget)}
+                      className="p-4 hover:bg-white/5 transition-all duration-200 group"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between"
+                        onClick={() => handleLoadBudget(budget)}
+                      >
                         <div className="flex items-center gap-4">
                           <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600/20 to-purple-600/20 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <span className="text-sm font-bold text-blue-400">#{budget.number}</span>
@@ -890,7 +899,26 @@ export default function InteractiveBudgetReport() {
                             <p className="text-lg font-bold text-green-400">${budget.total.toFixed(2)}</p>
                             <p className="text-xs text-gray-500">Total</p>
                           </div>
-                          <ChevronRightIcon className="h-5 w-5 text-gray-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              onClick={() => handleLoadBudget(budget, true)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-orange-400 hover:text-orange-300 hover:bg-orange-500/20"
+                              title="Editar"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleLoadBudget(budget, false)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                              title="Ver"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -913,7 +941,12 @@ export default function InteractiveBudgetReport() {
             </Link>
             <div className="flex-1">
               <CardTitle className="text-white flex items-center gap-2">
-                {isViewingMode ? (
+                {isEditMode ? (
+                  <>
+                    <Edit2 className="h-5 w-5 text-orange-400" />
+                    Editando Presupuesto #{selectedBudget?.number}
+                  </>
+                ) : isViewingMode ? (
                   <>
                     <EyeIcon className="h-5 w-5 text-blue-400" />
                     Viendo Presupuesto #{selectedBudget?.number}
@@ -923,7 +956,9 @@ export default function InteractiveBudgetReport() {
                 )}
               </CardTitle>
               <CardDescription className="text-gray-400">
-                {isViewingMode 
+                {isEditMode
+                  ? "Modifica los detalles y guarda los cambios"
+                  : isViewingMode 
                   ? "Presupuesto cargado desde tus guardados" 
                   : "Ingresa los detalles del cliente y las líneas de presupuesto."
                 }
@@ -942,7 +977,30 @@ export default function InteractiveBudgetReport() {
               <FolderOpenIcon className="h-4 w-4 mr-2" />
               Ver Guardados ({savedBudgets.length})
             </Button>
-            {isViewingMode && (
+            {(isViewingMode || isEditMode) && (
+              <>
+                {!isEditMode && (
+                  <Button 
+                    onClick={handleEditBudget} 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1 bg-gradient-to-r from-orange-600/10 to-amber-600/10 border-orange-500/30 hover:border-orange-500/50 hover:bg-orange-600/20 transition-all"
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                )}
+                <Button 
+                  onClick={handleCancelBudget} 
+                  variant="outline" 
+                  size="sm"
+                  className="bg-gradient-to-r from-red-600/10 to-rose-600/10 border-red-500/30 hover:border-red-500/50 hover:bg-red-600/20 transition-all"
+                >
+                  <Ban className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            {(!isViewingMode && !isEditMode) && (
               <Button 
                 onClick={handleNewBudget} 
                 variant="outline" 
@@ -1051,13 +1109,18 @@ export default function InteractiveBudgetReport() {
           </Button>
 
           <div className="flex gap-2">
-            {!isViewingMode && (
+            {isEditMode ? (
+              <Button onClick={handleUpdateBudget} className="flex-1 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 border-0" variant="outline">
+                <SaveIcon className="mr-2 h-4 w-4" />
+                Actualizar Presupuesto
+              </Button>
+            ) : !isViewingMode ? (
               <Button onClick={handleSaveBudget} className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0" variant="outline">
                 <SaveIcon className="mr-2 h-4 w-4" />
                 Guardar Presupuesto
               </Button>
-            )}
-            <Button onClick={handlePrint} className={`${isViewingMode ? 'flex-1' : ''}`}>
+            ) : null}
+            <Button onClick={handlePrint} className={`${(isViewingMode || isEditMode) ? 'flex-1' : ''}`}>
               <PrinterIcon className="mr-2 h-4 w-4" />
               Imprimir
             </Button>

@@ -122,7 +122,7 @@ const projects = [
 const stats = [
   { value: "150+", label: "Proyectos Completados", icon: Rocket },
   { value: "50+", label: "Clientes Satisfechos", icon: Users },
-  { value: "10+", label: "Años de Experiencia", icon: Star },
+  { value: "5+", label: "Años de Experiencia", icon: Star },
   { value: "99%", label: "Tasa de Satisfacción", icon: CheckCircle2 },
 ]
 
@@ -302,37 +302,37 @@ export default function Home() {
               <div className="w-2.5 h-2.5 bg-green-500 rounded-full" />
               <div className="absolute inset-0 w-2.5 h-2.5 bg-green-500 rounded-full animate-ping" />
             </div>
-            <span className="text-sm text-gray-300 font-medium">Transformando empresas desde 2014</span>
+            <span className="text-sm text-gray-300 font-medium">Desarrollador Freelance con 5+ años de experiencia</span>
             <Sparkles className="h-4 w-4 text-yellow-500 group-hover:rotate-12 transition-transform" />
           </div>
 
           {/* Main heading */}
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 animate-fade-up animation-delay-100">
-            <span className="block mb-2">Soluciones</span>
-            <span className="block relative">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 animate-blur-in">
+            <span className="block mb-2 animate-slide-up-fade">Soluciones</span>
+            <span className="block relative animate-zoom-in animation-delay-200">
               <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent animate-gradient-x">
                 Tecnológicas
               </span>
             </span>
-            <span className="block mt-2 text-4xl md:text-5xl lg:text-6xl text-gray-400 font-normal">de Alto Impacto</span>
+            <span className="block mt-2 text-4xl md:text-5xl lg:text-6xl text-gray-400 font-normal animate-slide-up-fade animation-delay-300">de Alto Impacto</span>
           </h1>
 
           {/* Subtitle */}
           <p className="text-lg md:text-xl lg:text-2xl text-gray-400 max-w-3xl mx-auto mb-12 animate-fade-up animation-delay-200 leading-relaxed">
-            Impulsamos la <span className="text-white font-medium">transformación digital</span> de tu empresa con 
-            soluciones <span className="text-blue-400">innovadoras</span> y consultoría 
-            <span className="text-purple-400"> especializada</span>.
+            Impulso la <span className="text-white font-medium">transformación digital</span> de tu empresa con 
+            soluciones <span className="text-blue-400">innovadoras</span> y desarrollo 
+            <span className="text-purple-400"> especializado</span>.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up animation-delay-300">
             <Button
               size="lg"
-              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-full px-10 py-7 text-lg font-medium shadow-2xl shadow-blue-600/25 hover:shadow-blue-600/40 hover:scale-105 transition-all duration-300 border-0"
+              className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-full px-10 py-7 text-lg font-medium shadow-2xl shadow-blue-600/25 hover:shadow-blue-600/60 hover:scale-110 transition-all duration-500 border-0 ripple-effect animate-intense-glow"
               onClick={() => document.getElementById("contacto")?.scrollIntoView({ behavior: "smooth" })}
             >
               Iniciar Proyecto
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-2 transition-transform duration-300" />
             </Button>
             <Button
               size="lg"
@@ -386,7 +386,7 @@ export default function Home() {
             {stats.map((stat, index) => (
               <div 
                 key={index} 
-                className={`text-center group transition-all duration-700 ${
+                className={`text-center group transition-all duration-700 hover:scale-110 magnetic-hover ${
                   statsSection.isInView 
                     ? 'opacity-100 translate-y-0' 
                     : 'opacity-0 translate-y-10'
@@ -394,9 +394,9 @@ export default function Home() {
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
                 <div className="relative inline-block mb-4">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all" />
-                  <div className="relative p-4 rounded-2xl bg-white/5 border border-white/10 group-hover:border-white/20 group-hover:scale-110 transition-all duration-300">
-                    <stat.icon className="h-6 w-6 text-blue-400" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-2xl blur-2xl group-hover:blur-3xl group-hover:scale-150 transition-all duration-500" />
+                  <div className="relative p-4 rounded-2xl bg-white/5 border border-white/10 group-hover:border-white/30 group-hover:scale-125 transition-all duration-500 animate-intense-glow">
+                    <stat.icon className="h-6 w-6 text-blue-400 group-hover:text-blue-300 transition-colors" />
                   </div>
                 </div>
                 <div className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
@@ -442,7 +442,7 @@ export default function Home() {
             {services.map((service, index) => (
               <div
                 key={index}
-                className={`group relative p-8 rounded-3xl bg-gradient-to-br ${service.bgGradient} border border-white/10 hover:border-white/20 transition-all duration-500 hover:scale-[1.02] hover:-translate-y-2 ${
+                className={`group relative p-8 rounded-3xl bg-gradient-to-br ${service.bgGradient} border border-white/10 hover:border-white/30 transition-all duration-500 hover:scale-[1.05] hover:-translate-y-3 hover:shadow-2xl hover:shadow-blue-500/20 tilt-3d ripple-effect ${
                   servicesSection.isInView 
                     ? 'opacity-100 translate-y-0' 
                     : 'opacity-0 translate-y-16'
@@ -450,10 +450,10 @@ export default function Home() {
                 style={{ transitionDelay: `${index * 100 + 200}ms` }}
               >
                 {/* Glow effect on hover */}
-                <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${service.bgGradient} opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500`} />
+                <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${service.bgGradient} opacity-0 group-hover:opacity-100 blur-2xl transition-opacity duration-500 animate-intense-glow`} />
                 
                 <div className="relative">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${service.gradient} flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg`}>
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${service.gradient} flex items-center justify-center mb-6 group-hover:scale-125 group-hover:rotate-6 transition-all duration-500 shadow-lg group-hover:shadow-2xl`}>
                     <service.icon className="h-7 w-7 text-white" />
                   </div>
                   <h3 className="text-xl font-bold mb-3 text-white">{service.title}</h3>
@@ -498,17 +498,13 @@ export default function Home() {
                 Una selección de nuestros trabajos más recientes que demuestran nuestra capacidad de entrega.
               </p>
             </div>
-            <Button variant="ghost" className="text-gray-400 hover:text-white mt-6 md:mt-0 group">
-              Ver todos los proyectos
-              <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {projects.map((project, index) => (
               <div
                 key={index}
-                className={`group relative rounded-3xl overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 hover:border-white/20 transition-all duration-500 hover:scale-[1.02] hover:-translate-y-2 ${
+                className={`group relative rounded-3xl overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 hover:border-white/30 transition-all duration-700 hover:scale-[1.05] hover:-translate-y-4 hover:shadow-2xl hover:shadow-purple-500/20 tilt-3d ${
                   projectsSection.isInView 
                     ? 'opacity-100 translate-y-0' 
                     : 'opacity-0 translate-y-20'
@@ -520,9 +516,9 @@ export default function Home() {
                   <img
                     src={project.image || "/placeholder.svg"}
                     alt={project.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    className="w-full h-full object-cover group-hover:scale-125 group-hover:rotate-2 transition-all duration-1000"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-60" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
                   
                   {/* Floating tags */}
                   <div className="absolute top-4 left-4 flex flex-wrap gap-2">
@@ -548,7 +544,7 @@ export default function Home() {
                 </div>
                 
                 {/* Hover glow effect */}
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-600/10 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-600/10 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none animate-intense-glow" />
               </div>
             ))}
           </div>
@@ -577,15 +573,15 @@ export default function Home() {
                 <span className="text-sm text-emerald-400 font-medium">Sobre nosotros</span>
               </div>
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 leading-tight">
-                Un equipo comprometido con la{" "}
+                Compromiso con la{" "}
                 <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
                   excelencia
                 </span>
               </h2>
               <p className="text-gray-400 mb-8 text-lg leading-relaxed">
-                En <span className="text-white font-semibold">{companyName}</span> combinamos experiencia técnica con visión estratégica para ofrecer soluciones que
-                realmente transforman negocios. Nuestro equipo multidisciplinario trabaja de la mano con cada cliente
-                para entender sus desafíos y diseñar la mejor ruta hacia el éxito.
+                Como desarrollador independiente, combino <span className="text-white font-semibold">5+ años de experiencia técnica</span> con visión estratégica para ofrecer soluciones que
+                realmente transforman negocios. Trabajo de la mano con cada cliente
+                para entender sus desafíos y diseñar la mejor ruta hacia el éxito digital.
               </p>
               
               <div className="grid grid-cols-2 gap-6">
@@ -600,8 +596,8 @@ export default function Home() {
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <Users className="h-6 w-6 text-white" />
                   </div>
-                  <div className="font-bold text-lg mb-1">Equipo Experto</div>
-                  <div className="text-sm text-gray-500">Profesionales certificados</div>
+                  <div className="font-bold text-lg mb-1">Desarrollador Experto</div>
+                  <div className="text-sm text-gray-500">5+ años de experiencia</div>
                 </div>
                 <div 
                   className={`group p-6 rounded-2xl bg-gradient-to-br from-emerald-600/10 to-cyan-600/10 border border-white/10 hover:border-white/20 transition-all duration-500 ${
@@ -651,8 +647,8 @@ export default function Home() {
                       ))}
                     </div>
                     <div>
-                      <div className="font-bold">+25 Expertos</div>
-                      <div className="text-sm text-gray-400">En nuestro equipo</div>
+                      <div className="font-bold">Desarrollador Full Stack</div>
+                      <div className="text-sm text-gray-400">5+ años de experiencia</div>
                     </div>
                   </div>
                 </div>
@@ -758,6 +754,12 @@ export default function Home() {
             <Button 
               size="lg" 
               className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-full px-10 py-7 text-lg font-medium shadow-2xl shadow-blue-600/25 hover:shadow-blue-600/40 hover:scale-105 transition-all duration-300 border-0"
+              onClick={() => {
+                const email = 'Edwin.dev.21114@gmail.com'
+                const title = encodeURIComponent('Reunión de Consultoría - APEX CONSULTING')
+                const details = encodeURIComponent('Reunión para discutir proyecto de desarrollo de software')
+                window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&add=${email}`, '_blank')
+              }}
             >
               Agendar Reunión
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -766,8 +768,9 @@ export default function Home() {
               size="lg"
               variant="outline"
               className="rounded-full px-10 py-7 text-lg border-white/20 text-white hover:bg-white/10 bg-white/5 backdrop-blur-sm hover:scale-105 transition-all duration-300"
+              onClick={() => window.location.href = 'mailto:Edwin.dev.21114@gmail.com'}
             >
-              info@apexconsulting.com
+              Edwin.dev.21114@gmail.com
             </Button>
           </div>
 
@@ -806,7 +809,7 @@ export default function Home() {
                 <span className="text-xl font-bold">{companyName}</span>
               </div>
               <p className="text-gray-500 max-w-sm mb-6">
-                Transformando empresas a través de soluciones tecnológicas innovadoras desde 2014.
+                Transformando empresas a través de soluciones tecnológicas innovadoras con 5+ años de experiencia.
               </p>
               <div className="flex gap-4">
                 {["LinkedIn", "Twitter", "GitHub"].map((social, i) => (
