@@ -19,6 +19,7 @@ import {
   DollarSignIcon,
   Eye,
   Pencil,
+  Ban,
 } from "lucide-react"
 import {
   BarChart,
@@ -80,6 +81,7 @@ interface DebtReportProps {
   onRegisterPayment?: (budgetId?: string) => void
   onViewBudget?: (budget: Budget) => void
   onPrintBudget?: (budget: Budget) => void
+  onCancelBudget?: (budget: Budget) => void
   budgetPayments?: any[] // Assuming this is an array of payment objects
   getPaymentsByBudget?: (budgetId: string) => any[]
 }
@@ -94,6 +96,7 @@ export function DebtReport({
   onRegisterPayment,
   onViewBudget,
   onPrintBudget,
+  onCancelBudget,
   budgetPayments = [], // Default value for budgetPayments
   getPaymentsByBudget,
 }: DebtReportProps) {
@@ -851,6 +854,17 @@ export function DebtReport({
                                 >
                                   <DollarSignIcon className="h-4 w-4 mr-1" />
                                   Pagar
+                                </Button>
+                              )}
+                              {onCancelBudget && (
+                                <Button
+                                  onClick={() => onCancelBudget(budget)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                                  title="Cancelar (no contará como deuda)"
+                                >
+                                  <Ban className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>

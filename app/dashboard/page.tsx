@@ -123,6 +123,7 @@ export default function DashboardPage() {
     deleteHourEntry,
     markHourEntryAsPaid,
     deleteBudget,
+    updateBudget,
     companySettings,
     userProfile,
     saveCompanySettings,
@@ -347,6 +348,23 @@ export default function DashboardPage() {
       status: budget.status,
     }))
     router.push('/budget-report?mode=view')
+  }
+
+  // Cancelar un presupuesto desde el reporte de deudas (deja de contar como cuenta por cobrar)
+  const handleCancelBudgetFromDebtReport = async (budget: Budget) => {
+    const ok = window.confirm(
+      `¿Cancelar el presupuesto #${budget.number}? Ya no aparecerá como cuenta por cobrar.`,
+    )
+    if (!ok) return
+    const result = await updateBudget(budget.id, { status: "cancelled" })
+    if (result?.error) {
+      alert(
+        "No se pudo cancelar el presupuesto:\n\n" +
+          ((result.error as any)?.message || JSON.stringify(result.error)),
+      )
+      return
+    }
+    alert(`Presupuesto #${budget.number} cancelado.`)
   }
 
   // Función para reimprimir un presupuesto
@@ -995,6 +1013,7 @@ export default function DashboardPage() {
               onRegisterPayment={handleOpenPaymentDialog}
               onViewBudget={handleViewBudgetFromDebtReport}
               onPrintBudget={handlePrintBudgetFromDebtReport}
+              onCancelBudget={handleCancelBudgetFromDebtReport}
               budgetPayments={budgetPayments}
               getPaymentsByBudget={getPaymentsByBudget}
             />

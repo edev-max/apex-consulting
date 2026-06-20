@@ -1084,7 +1084,7 @@ export default function InteractiveBudgetReport() {
                   size="sm"
                   className="bg-gradient-to-r from-red-600/10 to-rose-600/10 border-red-500/30 hover:border-red-500/50 hover:bg-red-600/20 transition-all"
                 >
-                  <Ban className="h-4 w-4" />
+                  <XIcon className="h-4 w-4" />
                 </Button>
               </>
             )}
