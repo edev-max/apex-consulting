@@ -848,6 +848,18 @@ export default function InteractiveBudgetReport() {
     setStartCorrelativeFrom(nextNumber.toString())
   }
 
+  // Cancelar / reactivar un presupuesto (los cancelados no cuentan como cuenta por cobrar)
+  const handleToggleCancel = async (budget: SavedBudget) => {
+    const isCancelled = budget.status === "cancelled"
+    const ok = window.confirm(
+      isCancelled
+        ? `¿Reactivar el presupuesto #${budget.number}? Volverá a contar como cuenta por cobrar.`
+        : `¿Cancelar el presupuesto #${budget.number}? Ya no aparecerá como cuenta por cobrar.`,
+    )
+    if (!ok) return
+    await updateBudget(budget.id, { status: isCancelled ? "pending" : "cancelled" })
+  }
+
   // Filtrar presupuestos por búsqueda
   const filteredBudgets = savedBudgets.filter(budget => 
     budget.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -936,7 +948,7 @@ export default function InteractiveBudgetReport() {
                                     : 'border-gray-500/50 text-gray-400 bg-gray-500/10'
                                 }`}
                               >
-                                {budget.status === 'paid' ? 'Pagado' : budget.status === 'pending' ? 'Pendiente' : budget.status}
+                                {budget.status === 'cancelled' ? 'Cancelado' : budget.status === 'paid' ? 'Pagado' : budget.status === 'pending' ? 'Pendiente' : budget.status}
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-400 truncate">{budget.client_name}</p>
@@ -975,6 +987,15 @@ export default function InteractiveBudgetReport() {
                               title="Ver"
                             >
                               <EyeIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleToggleCancel(budget)}
+                              variant="ghost"
+                              size="sm"
+                              className={`h-8 w-8 p-0 ${budget.status === 'cancelled' ? 'text-green-400 hover:text-green-300 hover:bg-green-500/20' : 'text-red-400 hover:text-red-300 hover:bg-red-500/20'}`}
+                              title={budget.status === 'cancelled' ? 'Reactivar' : 'Cancelar'}
+                            >
+                              <Ban className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>

@@ -24,12 +24,15 @@ interface DashboardCardsProps {
 }
 
 export function DashboardCards({ budgets, clients, hourEntries }: DashboardCardsProps) {
-  const totalRevenue = budgets.reduce((sum, budget) => sum + budget.total, 0)
-  const totalPaidRevenue = budgets.reduce((sum, budget) => sum + (budget.paid_amount || 0), 0)
+  // Excluir presupuestos cancelados: no cuentan como ingreso ni como cuenta por cobrar
+  const activeBudgets = budgets.filter((b) => b.status !== "cancelled")
+
+  const totalRevenue = activeBudgets.reduce((sum, budget) => sum + budget.total, 0)
+  const totalPaidRevenue = activeBudgets.reduce((sum, budget) => sum + (budget.paid_amount || 0), 0)
   const totalPendingRevenue = totalRevenue - totalPaidRevenue
 
-  const paidBudgets = budgets.filter((b) => b.payment_status === "paid" || b.paid_amount >= b.total)
-  const pendingBudgets = budgets.filter((b) => (b.paid_amount || 0) < b.total)
+  const paidBudgets = activeBudgets.filter((b) => b.payment_status === "paid" || b.paid_amount >= b.total)
+  const pendingBudgets = activeBudgets.filter((b) => (b.paid_amount || 0) < b.total)
 
   const consumedHours = clients.reduce((sum, client) => sum + client.consumed_hours, 0)
 
@@ -44,10 +47,10 @@ export function DashboardCards({ budgets, clients, hourEntries }: DashboardCards
     { name: "Pagados", value: paidBudgets.length, color: "#10b981" },
     {
       name: "Pendientes",
-      value: budgets.filter((b) => (b.paid_amount || 0) > 0 && (b.paid_amount || 0) < b.total).length,
+      value: activeBudgets.filter((b) => (b.paid_amount || 0) > 0 && (b.paid_amount || 0) < b.total).length,
       color: "#f59e0b",
     },
-    { name: "Sin pagar", value: budgets.filter((b) => (b.paid_amount || 0) === 0).length, color: "#ef4444" },
+    { name: "Sin pagar", value: activeBudgets.filter((b) => (b.paid_amount || 0) === 0).length, color: "#ef4444" },
   ]
 
   const revenueData = [

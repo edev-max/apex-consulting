@@ -202,7 +202,7 @@ export function useSupabaseData() {
 
   // Funciones para presupuestos
   const loadBudgets = async () => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -245,7 +245,7 @@ export function useSupabaseData() {
     reportNumber: number
     total: number
   }) => {
-    if (!user || !tablesExist) return null
+    if (!user) return null
 
     try {
       const supabase = getClient()
@@ -277,7 +277,7 @@ export function useSupabaseData() {
   }
 
   const updateBudget = async (budgetId: string, updates: Partial<Budget>) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -308,7 +308,7 @@ export function useSupabaseData() {
   }
 
   const deleteBudget = async (budgetId: string) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -326,7 +326,7 @@ export function useSupabaseData() {
   }
 
   const getNextBudgetNumber = async () => {
-    if (!user || !tablesExist) return 589
+    if (!user) return 589
 
     try {
       const supabase = getClient()
@@ -346,7 +346,7 @@ export function useSupabaseData() {
 
   // Funciones para clientes
   const loadClients = async () => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -368,7 +368,7 @@ export function useSupabaseData() {
   }
 
   const saveClient = async (clientData: { name: string; email: string }) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -391,7 +391,7 @@ export function useSupabaseData() {
   }
 
   const updateClient = async (clientId: string, updates: Partial<Client>) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -409,7 +409,7 @@ export function useSupabaseData() {
   }
 
   const deleteClient = async (clientId: string) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -428,7 +428,7 @@ export function useSupabaseData() {
 
   // Funciones para registros de horas
   const loadHourEntries = async () => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -460,7 +460,7 @@ export function useSupabaseData() {
     type?: "add" | "subtract"
     date?: string
   }) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -490,7 +490,7 @@ export function useSupabaseData() {
   }
 
   const deleteHourEntry = async (entryId: string) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -508,7 +508,7 @@ export function useSupabaseData() {
   }
 
   const markHourEntryAsPaid = async (entryId: string) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -531,7 +531,7 @@ export function useSupabaseData() {
 
   // Funciones para cotizaciones de horas
   const loadHourQuotes = async () => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -559,7 +559,7 @@ export function useSupabaseData() {
     description: string
     project: string
   }) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -584,7 +584,7 @@ export function useSupabaseData() {
   }
 
   const updateHourQuote = async (quoteId: string, updates: Partial<HourQuote>) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -602,7 +602,7 @@ export function useSupabaseData() {
   }
 
   const deleteHourQuote = async (quoteId: string) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -621,7 +621,7 @@ export function useSupabaseData() {
 
   // Funciones para configuración de empresa
   const loadCompanySettings = async () => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -639,7 +639,7 @@ export function useSupabaseData() {
   }
 
   const saveCompanySettings = async (settings: { company_name: string; company_logo_url?: string }) => {
-    if (!user || !tablesExist) return null
+    if (!user) return null
 
     try {
       const supabase = getClient()
@@ -694,7 +694,7 @@ export function useSupabaseData() {
 
   // Funciones para perfil de usuario
   const loadUserProfile = async () => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -712,7 +712,7 @@ export function useSupabaseData() {
   }
 
   const saveUserProfile = async (profile: { avatar_url?: string; full_name?: string }) => {
-    if (!user || !tablesExist) return null
+    if (!user) return null
 
     try {
       const supabase = getClient()
@@ -788,7 +788,7 @@ export function useSupabaseData() {
   }
 
   const loadInvoices = async () => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -823,7 +823,7 @@ export function useSupabaseData() {
   }
 
   const getNextInvoiceNumber = async () => {
-    if (!user || !tablesExist) return 1
+    if (!user) return 1
 
     try {
       const supabase = getClient()
@@ -842,7 +842,7 @@ export function useSupabaseData() {
   }
 
   const getBudgetInvoicedAmounts = async (budgetId: string) => {
-    if (!user || !tablesExist) return {}
+    if (!user) return {}
 
     try {
       const supabase = getClient()
@@ -877,7 +877,7 @@ export function useSupabaseData() {
     budgetId: string,
     selectedItems: Array<{ itemId: string; quantity: number; amount: number }>,
   ) => {
-    if (!user || !tablesExist) return null
+    if (!user) return null
 
     try {
       const supabase = getClient()
@@ -953,7 +953,7 @@ export function useSupabaseData() {
   }
 
   const updateInvoice = async (invoiceId: string, updates: Partial<Invoice>) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -982,7 +982,7 @@ export function useSupabaseData() {
   }
 
   const deleteInvoice = async (invoiceId: string) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -1001,7 +1001,7 @@ export function useSupabaseData() {
 
   // Funciones para pagos de presupuestos
   const loadBudgetPayments = async () => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()
@@ -1030,7 +1030,7 @@ export function useSupabaseData() {
     reference_number: string
     notes: string
   }) => {
-    if (!user || !tablesExist) return null
+    if (!user) return null
 
     try {
       const supabase = getClient()
@@ -1064,7 +1064,7 @@ export function useSupabaseData() {
   }
 
   const deleteBudgetPayment = async (paymentId: string) => {
-    if (!user || !tablesExist) return
+    if (!user) return
 
     try {
       const supabase = getClient()

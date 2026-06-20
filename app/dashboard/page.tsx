@@ -968,7 +968,7 @@ export default function DashboardPage() {
                   >
                     <option value="all">📊 Todos los clientes (Reporte General)</option>
                     {clients.map((client) => {
-                      const clientBudgets = budgets.filter((b) => b.client_name === client.name)
+                      const clientBudgets = budgets.filter((b) => b.client_name === client.name && b.status !== 'cancelled')
                       const totalDebt = clientBudgets.reduce((sum, b) => {
                         const paid = (b as any).paid_amount || 0
                         return sum + (b.total - paid)
