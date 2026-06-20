@@ -307,20 +307,22 @@ export function DebtReport({
                 <td style="text-align: right; color: #10b981;">$${paidAmount.toLocaleString()}</td>
                 <td style="text-align: right; color: #f97316; font-weight: 600;">$${pendingAmount.toLocaleString()}</td>
                 <td>
-                  <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; ${
-                    paidAmount >= totalAmount
-                      ? "background-color: #d1fae5; color: #065f46;"
-                      : paidAmount > 0
-                        ? "background-color: #fed7aa; color: #9a3412;"
-                        : "background-color: #fee2e2; color: #991b1b;"
-                  }">
-                    ${paidAmount >= totalAmount ? "Pagado" : paidAmount > 0 ? "Parcial" : "Sin pagar"}
-                  </span>
-                  ${
-                    overdueIds.has(budget.id)
-                      ? '<span style="margin-left:6px;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:700;background-color:#fee2e2;color:#991b1b;">VENCIDO</span>'
-                      : ""
-                  }
+                  <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start;">
+                    <span style="display:inline-block;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600;letter-spacing:0.3px;white-space:nowrap; ${
+                      paidAmount >= totalAmount
+                        ? "background-color: #dcfce7; color: #166534;"
+                        : paidAmount > 0
+                          ? "background-color: #fef3c7; color: #92400e;"
+                          : "background-color: #fee2e2; color: #b91c1c;"
+                    }">
+                      ${paidAmount >= totalAmount ? "Pagado" : paidAmount > 0 ? "Parcial" : "Sin pagar"}
+                    </span>
+                    ${
+                      overdueIds.has(budget.id)
+                        ? '<span style="display:inline-block;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600;letter-spacing:0.3px;white-space:nowrap;background-color:#fff1f2;color:#be123c;border:1px solid #fecdd3;">Vencido</span>'
+                        : ""
+                    }
+                  </div>
                 </td>
               </tr>
             `
@@ -389,12 +391,12 @@ export function DebtReport({
                 <td style="text-align: right; color: #10b981;">$${paidAmount.toLocaleString()}</td>
                 <td style="text-align: right; color: ${pendingAmount > 0 ? "#f97316" : "#10b981"};">$${pendingAmount.toLocaleString()}</td>
                 <td>
-                  <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; ${
+                  <span style="display:inline-block;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600;letter-spacing:0.3px;white-space:nowrap; ${
                     paidAmount >= totalAmount
-                      ? "background-color: #d1fae5; color: #065f46;"
+                      ? "background-color: #dcfce7; color: #166534;"
                       : paidAmount > 0
-                        ? "background-color: #fed7aa; color: #9a3412;"
-                        : "background-color: #fee2e2; color: #991b1b;"
+                        ? "background-color: #fef3c7; color: #92400e;"
+                        : "background-color: #fee2e2; color: #b91c1c;"
                   }">
                     ${paidAmount >= totalAmount ? "Pagado" : paidAmount > 0 ? "Parcial" : "Sin pagar"}
                   </span>
@@ -464,12 +466,12 @@ export function DebtReport({
                 <td style="text-align: right; font-weight: 600; color: ${client.pendingDebt > 0 ? "#f97316" : "#10b981"};">$${client.pendingDebt.toLocaleString()}</td>
                 <td style="text-align: center;">${client.budgetCount} P / ${client.invoiceCount} F</td>
                 <td style="text-align: center;">
-                  <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; ${
+                  <span style="display:inline-block;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600;letter-spacing:0.3px;white-space:nowrap; ${
                     client.pendingDebt === 0
-                      ? "background-color: #d1fae5; color: #065f46;"
+                      ? "background-color: #dcfce7; color: #166534;"
                       : client.totalPaid === 0
-                        ? "background-color: #fee2e2; color: #991b1b;"
-                        : "background-color: #fed7aa; color: #9a3412;"
+                        ? "background-color: #fee2e2; color: #b91c1c;"
+                        : "background-color: #fef3c7; color: #92400e;"
                   }">
                     ${client.pendingDebt === 0 ? "Pagado" : client.totalPaid === 0 ? "Sin pagar" : "Parcial"}
                   </span>
