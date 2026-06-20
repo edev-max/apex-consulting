@@ -56,7 +56,7 @@ export default function InteractiveBudgetReport() {
   const { user } = useAuth()
   const router = useRouter()
   const { saveBudget, getNextBudgetNumber } = useBudgetStorage()
-  const { companySettings: settings, budgets: savedBudgets } = useSupabaseData()
+  const { companySettings: settings, budgets: savedBudgets, updateBudget } = useSupabaseData()
 
   const [clientName, setClientName] = useState<string>("")
   const [projectName, setProjectName] = useState<string>("")
@@ -785,6 +785,64 @@ export default function InteractiveBudgetReport() {
     setEditingBudgetId(null)
     setSelectedBudget(null)
     
+    const nextNumber = await getNextBudgetNumber()
+    setReportNumber(nextNumber)
+    setStartCorrelativeFrom(nextNumber.toString())
+  }
+
+  // Pasar de "ver" a "editar" el presupuesto cargado
+  const handleEditBudget = () => {
+    if (!selectedBudget) return
+    setIsViewingMode(false)
+    setIsEditMode(true)
+    setEditingBudgetId(selectedBudget.id)
+  }
+
+  // Cancelar la vista/edición y volver a un presupuesto nuevo
+  const handleCancelBudget = async () => {
+    setClientName("")
+    setProjectName("")
+    setProjectDescription("")
+    setBudgetItems([])
+    setIsViewingMode(false)
+    setIsEditMode(false)
+    setEditingBudgetId(null)
+    setSelectedBudget(null)
+
+    const nextNumber = await getNextBudgetNumber()
+    setReportNumber(nextNumber)
+    setStartCorrelativeFrom(nextNumber.toString())
+  }
+
+  // Guardar los cambios de un presupuesto existente
+  const handleUpdateBudget = async () => {
+    if (!editingBudgetId) return
+
+    if (!clientName || !projectName || budgetItems.length === 0) {
+      alert("Por favor, completa al menos el nombre del cliente, proyecto y añade al menos un ítem al presupuesto.")
+      return
+    }
+
+    await updateBudget(editingBudgetId, {
+      client_name: clientName,
+      project_name: projectName,
+      project_description: projectDescription,
+      total: totalBudget,
+      items: budgetItems,
+    })
+
+    alert(`Presupuesto #${selectedBudget?.number ?? ""} actualizado exitosamente!`)
+
+    // Salir del modo edición y dejar listo un presupuesto nuevo
+    setClientName("")
+    setProjectName("")
+    setProjectDescription("")
+    setBudgetItems([])
+    setIsViewingMode(false)
+    setIsEditMode(false)
+    setEditingBudgetId(null)
+    setSelectedBudget(null)
+
     const nextNumber = await getNextBudgetNumber()
     setReportNumber(nextNumber)
     setStartCorrelativeFrom(nextNumber.toString())
