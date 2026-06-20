@@ -277,7 +277,7 @@ export function useSupabaseData() {
   }
 
   const updateBudget = async (budgetId: string, updates: Partial<Budget>) => {
-    if (!user) return
+    if (!user) return { error: new Error("Usuario no autenticado") }
 
     try {
       const supabase = getClient()
@@ -298,12 +298,14 @@ export function useSupabaseData() {
 
       if (error) {
         console.error("Error updating budget:", error)
-        return
+        return { error }
       }
 
       await loadBudgets()
+      return { error: null }
     } catch (error) {
       console.error("Error updating budget:", error)
+      return { error }
     }
   }
 

@@ -857,7 +857,16 @@ export default function InteractiveBudgetReport() {
         : `¿Cancelar el presupuesto #${budget.number}? Ya no aparecerá como cuenta por cobrar.`,
     )
     if (!ok) return
-    await updateBudget(budget.id, { status: isCancelled ? "pending" : "cancelled" })
+
+    const result = await updateBudget(budget.id, { status: isCancelled ? "pending" : "cancelled" })
+    if (result?.error) {
+      alert(
+        "No se pudo actualizar el presupuesto:\n\n" +
+          ((result.error as any)?.message || JSON.stringify(result.error)),
+      )
+      return
+    }
+    alert(isCancelled ? `Presupuesto #${budget.number} reactivado.` : `Presupuesto #${budget.number} cancelado.`)
   }
 
   // Filtrar presupuestos por búsqueda
