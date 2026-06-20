@@ -686,8 +686,9 @@ export default function InteractiveBudgetReport() {
     <!-- Conditions Section -->
     <div class="conditions-section">
       <div class="conditions-block">
-        <h4>CONDICIONES DE PAGO</h4>
-        <p>El presente presupuesto tiene una validez de 7 días a partir de la fecha de emisión. Pasado este plazo, los precios podrían sufrir modificaciones.</p>
+        <h4>TÉRMINOS Y CONDICIONES</h4>
+        <p><strong>Modalidad post-pago:</strong> el presupuesto cuenta con 7 días hábiles para su cancelación a partir de la fecha de emisión. Transcurrido dicho plazo sin recibir el pago, los montos podrán estar sujetos a modificaciones o recargos por retraso.</p>
+        <p style="margin-top:8px;"><strong>Modalidad prepago:</strong> se abona el 50% del presupuesto al inicio del trabajo y el 50% restante a su entrega o finalización.</p>
       </div>
       <div class="conditions-block">
         <h4>DATOS DE PAGO</h4>
