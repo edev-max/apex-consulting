@@ -1,0 +1,11 @@
+[build]
+  command = "pnpm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Soporte oficial de Next.js (App Router, SSR y middleware) en Netlify.
+# El plugin se instala solo; lo dejamos explícito para que el build sea reproducible.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
