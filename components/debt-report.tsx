@@ -422,6 +422,80 @@ export function DebtReport({
             : '<p style="text-align: center; color: #6b7280; padding: 20px;">No hay facturas emitidas</p>'
         }
       `
+
+      // Detalle completo (con ítems) de cada presupuesto marcado como vencido
+      if (overdueList.length > 0) {
+        const fmtMoney = (n: number) =>
+          Number(n).toLocaleString("es-ES", { minimumFractionDigits: 2 })
+        const fmtDate = (d: Date) =>
+          d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
+
+        content +=
+          `<h3 style="margin-top: 40px; margin-bottom: 15px; color: #374151;">Detalle de Presupuestos Vencidos (${overdueList.length})</h3>` +
+          overdueList
+            .map((b) => {
+              const items = (b.items || []) as any[]
+              const totalB = items.reduce((s, it) => s + Number(it.quantity) * Number(it.rate), 0)
+              const issued = new Date(b.date)
+              const due = new Date(issued.getTime() + 7 * 24 * 60 * 60 * 1000)
+              const rows =
+                items.length === 0
+                  ? '<tr><td colspan="5" style="text-align:center;color:#999;padding:24px;">Sin ítems</td></tr>'
+                  : items
+                      .map(
+                        (it, i) => `
+                <tr>
+                  <td style="text-align:center;font-weight:700;">${i + 1}</td>
+                  <td>${it.description ?? ""}</td>
+                  <td style="text-align:right;">$${fmtMoney(it.rate)}</td>
+                  <td style="text-align:center;">${it.quantity}</td>
+                  <td style="text-align:right;font-weight:600;">$${fmtMoney(Number(it.quantity) * Number(it.rate))}</td>
+                </tr>`,
+                      )
+                      .join("")
+              return `
+        <div style="page-break-inside: avoid; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; margin-bottom:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:18px 22px;border-bottom:3px solid #3b82f6;background:#f8fafc;">
+            <div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#3b82f6;font-weight:700;">Presupuesto Nº ${b.number}</div>
+              <div style="font-size:18px;font-weight:700;color:#1a1a1a;margin-top:2px;">${b.project_name || ""}</div>
+              <div style="font-size:13px;color:#666;">${b.client_name || ""}</div>
+            </div>
+            <div style="text-align:right;font-size:12px;color:#666;">
+              <div><strong style="color:#1a1a1a;">Fecha:</strong> ${fmtDate(issued)}</div>
+              <div><strong style="color:#1a1a1a;">Vencimiento:</strong> ${fmtDate(due)}</div>
+              <div style="display:inline-block;margin-top:6px;padding:3px 10px;border:2px solid #dc2626;color:#dc2626;font-weight:700;font-size:11px;border-radius:6px;">VENCIDO</div>
+            </div>
+          </div>
+          ${
+            b.project_description
+              ? `<div style="padding:14px 22px;background:#fafafa;border-bottom:1px solid #eee;font-size:13px;color:#444;line-height:1.5;"><strong style="color:#374151;">Detalles:</strong> ${b.project_description}</div>`
+              : ""
+          }
+          <div style="padding:18px 22px;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th style="width:8%;">#</th>
+                  <th>Descripción</th>
+                  <th style="text-align:right;">Precio</th>
+                  <th style="text-align:center;">Cantidad</th>
+                  <th style="text-align:right;">Total</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+              <tfoot>
+                <tr style="background-color:#f3f4f6;font-weight:bold;border-top:3px solid #3b82f6;">
+                  <td colspan="4" style="text-align:right;padding:12px;">TOTAL:</td>
+                  <td style="text-align:right;color:#1e40af;font-size:15px;">$${fmtMoney(totalB)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>`
+            })
+            .join("")
+      }
     } else {
       content = `
         <div class="summary">
