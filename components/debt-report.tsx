@@ -101,6 +101,16 @@ export function DebtReport({
   getPaymentsByBudget,
 }: DebtReportProps) {
   const [selectedClient, setSelectedClient] = useState<string | null>(null)
+  const [overdueIds, setOverdueIds] = useState<Set<string>>(new Set())
+
+  const toggleOverdue = (id: string) => {
+    setOverdueIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const calculateClientDebts = (): ClientDebt[] => {
     const clientMap = new Map<string, ClientDebt>()
@@ -240,6 +250,13 @@ export function DebtReport({
     let content = ""
 
     if (client) {
+      const overdueList = client.budgets.filter((b) => overdueIds.has(b.id))
+      const overdueTotal = overdueList.reduce(
+        (sum, b) => sum + (Number(b.total) - Number(b.paid_amount || 0)),
+        0,
+      )
+      const notOverdueTotal = client.pendingDebt - overdueTotal
+
       content = `
         <div class="client-info">
           <h2>${client.clientName}</h2>
@@ -299,6 +316,11 @@ export function DebtReport({
                   }">
                     ${paidAmount >= totalAmount ? "Pagado" : paidAmount > 0 ? "Parcial" : "Sin pagar"}
                   </span>
+                  ${
+                    overdueIds.has(budget.id)
+                      ? '<span style="margin-left:6px;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:700;background-color:#fee2e2;color:#991b1b;">VENCIDO</span>'
+                      : ""
+                  }
                 </td>
               </tr>
             `
@@ -315,6 +337,19 @@ export function DebtReport({
             </tr>
           </tfoot>
         </table>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:20px 0;">
+          <div style="background:#fef2f2;border:2px solid #fecaca;border-radius:8px;padding:16px;text-align:center;">
+            <div style="font-size:13px;color:#6b7280;margin-bottom:6px;font-weight:500;">Saldo Pendiente Vencido</div>
+            <div style="font-size:24px;font-weight:bold;color:#dc2626;">$${overdueTotal.toLocaleString()}</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px;">${overdueList.length} presupuesto(s) vencido(s)</div>
+          </div>
+          <div style="background:#fffbeb;border:2px solid #fde68a;border-radius:8px;padding:16px;text-align:center;">
+            <div style="font-size:13px;color:#6b7280;margin-bottom:6px;font-weight:500;">Saldo Pendiente por Vencer</div>
+            <div style="font-size:24px;font-weight:bold;color:#d97706;">$${notOverdueTotal.toLocaleString()}</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px;">Resto del saldo pendiente</div>
+          </div>
+        </div>
 
         <h3 style="margin-top: 30px; margin-bottom: 15px; color: #374151;">Facturas Emitidas (${client.invoiceCount})</h3>
         ${
@@ -720,6 +755,13 @@ export function DebtReport({
   }
 
   if (selectedClientData) {
+    const overdueBudgets = selectedClientData.budgets.filter((b) => overdueIds.has(b.id))
+    const overdueTotal = overdueBudgets.reduce(
+      (sum, b) => sum + (Number(b.total) - Number(b.paid_amount || 0)),
+      0,
+    )
+    const notOverdueTotal = selectedClientData.pendingDebt - overdueTotal
+
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -768,6 +810,21 @@ export function DebtReport({
                 </div>
               </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="bg-red-500/10 rounded-lg p-4 border-l-4 border-l-red-500">
+                <div className="text-sm text-gray-400 mb-1">Saldo Pendiente Vencido</div>
+                <div className="text-2xl font-bold text-red-400">${overdueTotal.toLocaleString()}</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {overdueBudgets.length} presupuesto(s) marcado(s) como vencido
+                </div>
+              </div>
+              <div className="bg-yellow-500/10 rounded-lg p-4 border-l-4 border-l-yellow-500">
+                <div className="text-sm text-gray-400 mb-1">Saldo Pendiente por Vencer</div>
+                <div className="text-2xl font-bold text-yellow-400">${notOverdueTotal.toLocaleString()}</div>
+                <div className="text-xs text-gray-500 mt-1">Resto del saldo pendiente</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -792,6 +849,7 @@ export function DebtReport({
                       <TableHead className="text-right font-semibold text-gray-300">Pagado</TableHead>
                       <TableHead className="text-right font-semibold text-gray-300">Pendiente</TableHead>
                       <TableHead className="text-center font-semibold text-gray-300">Estado</TableHead>
+                      <TableHead className="text-center font-semibold text-gray-300">Vencido</TableHead>
                       <TableHead className="text-center font-semibold text-gray-300">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -821,6 +879,15 @@ export function DebtReport({
                             ) : (
                               <Badge className="bg-red-500/20 text-red-300 border border-red-500/30">Sin pagar</Badge>
                             )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <input
+                              type="checkbox"
+                              checked={overdueIds.has(budget.id)}
+                              onChange={() => toggleOverdue(budget.id)}
+                              className="h-4 w-4 accent-red-500 cursor-pointer"
+                              title="Marcar como vencido"
+                            />
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-center gap-1">
