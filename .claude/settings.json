@@ -6,7 +6,10 @@
       "Bash(npm -v)",
       "Bash(echo \"npm: $\\(npm -v 2>&1\\)\")",
       "Bash(npx --yes pnpm@9 install --frozen-lockfile --reporter=append-only)",
-      "Bash(npx --yes pnpm@9 run build)"
+      "Bash(npx --yes pnpm@9 run build)",
+      "Bash(git check-ignore *)",
+      "Bash(git commit *)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }
