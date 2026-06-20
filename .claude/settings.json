@@ -9,7 +9,9 @@
       "Bash(npx --yes pnpm@9 run build)",
       "Bash(git check-ignore *)",
       "Bash(git commit *)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(rm -rf .next && npx --yes pnpm@9 run build > /tmp/bld.log 2>&1; code=$?; echo \"BUILD_EXIT=$code\"; grep -vE \"bundle5\\\\.js|^var |node_modules|processTicks|runNextTicks|processImmediate\" /tmp/bld.log | tail -30)",
+      "Read(//tmp/**)"
     ]
   }
 }
