@@ -497,7 +497,7 @@ export function DebtReport({
               const due = new Date(issued.getTime() + 7 * 24 * 60 * 60 * 1000)
               const overdueAmount = overdueOf(b)
               const isPartial = overdueAmount < pendingOf(b)
-              const colCount = showDiscounts ? 6 : 5
+              const colCount = showDiscounts ? 7 : 6
               const rows =
                 items.length === 0
                   ? `<tr><td colspan="${colCount}" style="text-align:center;color:#999;padding:24px;">Sin ítems</td></tr>`
@@ -510,6 +510,7 @@ export function DebtReport({
                   <td>${it.description ?? ""}</td>
                   <td style="text-align:right;">$${fmtMoney(it.rate)}</td>
                   <td style="text-align:center;">${it.quantity}</td>
+                  <td style="text-align:center;color:#6b7280;">${it.unit || "—"}</td>
                   ${
                     showDiscounts
                       ? `<td style="text-align:right;color:${dis > 0 ? "#b91c1c" : "#9ca3af"};">${
@@ -550,6 +551,7 @@ export function DebtReport({
                   <th>Descripción</th>
                   <th style="text-align:right;">Precio</th>
                   <th style="text-align:center;">Cantidad</th>
+                  <th style="text-align:center;">Unidad</th>
                   ${showDiscounts ? '<th style="text-align:right;">Descuento</th>' : ""}
                   <th style="text-align:right;">Total</th>
                 </tr>

@@ -864,17 +864,18 @@ export default function DashboardPage() {
       <table class="items-table">
         <thead>
           <tr>
-            <th style="width: 8%">#</th>
-            <th style="width: ${showDiscounts ? '36%' : '42%'}">DESCRIPCIÓN</th>
-            <th style="width: 16%">PRECIO</th>
-            <th style="width: 10%">CANTIDAD</th>
-            ${showDiscounts ? '<th style="width: 14%">DESCUENTO</th>' : ''}
-            <th style="width: ${showDiscounts ? '18%' : '20%'}">TOTAL</th>
+            <th style="width: 6%">#</th>
+            <th style="width: ${showDiscounts ? '31%' : '37%'}">DESCRIPCIÓN</th>
+            <th style="width: 15%">PRECIO</th>
+            <th style="width: 9%">CANTIDAD</th>
+            <th style="width: 12%">UNIDAD</th>
+            ${showDiscounts ? '<th style="width: 13%">DESCUENTO</th>' : ''}
+            <th style="width: ${showDiscounts ? '14%' : '21%'}">TOTAL</th>
           </tr>
         </thead>
         <tbody>
           ${budgetItems.length === 0
-            ? `<tr><td colspan="${showDiscounts ? 6 : 5}" style="text-align: center; color: #999; padding: 40px;">No hay ítems en el presupuesto</td></tr>`
+            ? `<tr><td colspan="${showDiscounts ? 7 : 6}" style="text-align: center; color: #999; padding: 40px;">No hay ítems en el presupuesto</td></tr>`
             : budgetItems.map((item: any, index: number) => {
               const discount = itemDiscount(item)
               return `
@@ -883,6 +884,7 @@ export default function DashboardPage() {
                 <td class="item-description">${item.description}</td>
                 <td>$${money(Number(item.rate))}</td>
                 <td>${item.quantity}</td>
+                <td>${item.unit || '—'}</td>
                 ${showDiscounts
                   ? `<td style="color: ${discount > 0 ? '#b91c1c' : '#9ca3af'};">${
                       discount > 0

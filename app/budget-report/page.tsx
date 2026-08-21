@@ -683,16 +683,17 @@ export default function InteractiveBudgetReport() {
         <thead>
           <tr>
             <th style="width: 6%">#</th>
-            <th style="width: ${showDiscounts ? '36%' : '42%'}">DESCRIPCIÓN</th>
-            <th style="width: 16%">PRECIO</th>
-            <th style="width: 10%">CANTIDAD</th>
-            ${showDiscounts ? '<th style="width: 14%">DESCUENTO</th>' : ''}
-            <th style="width: ${showDiscounts ? '18%' : '20%'}">TOTAL</th>
+            <th style="width: ${showDiscounts ? '31%' : '37%'}">DESCRIPCIÓN</th>
+            <th style="width: 15%">PRECIO</th>
+            <th style="width: 9%">CANTIDAD</th>
+            <th style="width: 12%">UNIDAD</th>
+            ${showDiscounts ? '<th style="width: 13%">DESCUENTO</th>' : ''}
+            <th style="width: ${showDiscounts ? '14%' : '21%'}">TOTAL</th>
           </tr>
         </thead>
         <tbody>
           ${budgetItems.length === 0
-            ? `<tr><td colspan="${showDiscounts ? 6 : 5}" style="text-align: center; color: #999; padding: 40px;">No hay ítems en el presupuesto</td></tr>`
+            ? `<tr><td colspan="${showDiscounts ? 7 : 6}" style="text-align: center; color: #999; padding: 40px;">No hay ítems en el presupuesto</td></tr>`
             : budgetItems.map((item: BudgetItem, index: number) => {
               const discount = itemDiscount(item)
               return `
@@ -701,6 +702,7 @@ export default function InteractiveBudgetReport() {
                 <td class="item-description">${item.description}</td>
                 <td>$${money(Number(item.rate))}</td>
                 <td>${item.quantity}</td>
+                <td>${item.unit || '—'}</td>
                 ${showDiscounts
                   ? `<td style="color: ${discount > 0 ? '#b91c1c' : '#9ca3af'};">${
                       discount > 0
@@ -1357,7 +1359,8 @@ export default function InteractiveBudgetReport() {
                   <TableHead className="w-[150px] text-gray-300">Categoría</TableHead>
                   <TableHead className="text-gray-300">Descripción</TableHead>
                   <TableHead className="text-right text-gray-300">Cantidad</TableHead>
-                  <TableHead className="text-right text-gray-300">Tarifa/Unidad</TableHead>
+                  <TableHead className="text-gray-300">Unidad</TableHead>
+                  <TableHead className="text-right text-gray-300">Tarifa</TableHead>
                   <TableHead className="text-center text-gray-300 print:hidden">Descuento</TableHead>
                   <TableHead className="text-right text-gray-300">Total</TableHead>
                   <TableHead className="w-[50px] print:hidden"></TableHead>
@@ -1366,7 +1369,7 @@ export default function InteractiveBudgetReport() {
               <TableBody>
                 {budgetItems.length === 0 ? (
                   <TableRow className="border-white/10">
-                    <TableCell colSpan={7} className="text-center text-gray-400">
+                    <TableCell colSpan={8} className="text-center text-gray-400">
                       No hay ítems en el presupuesto.
                     </TableCell>
                   </TableRow>
@@ -1380,9 +1383,8 @@ export default function InteractiveBudgetReport() {
                     <TableRow key={item.id} className="border-white/10 hover:bg-white/5">
                       <TableCell className="font-medium text-white">{item.category}</TableCell>
                       <TableCell className="text-gray-300">{item.description}</TableCell>
-                      <TableCell className="text-right text-gray-300">
-                        {item.quantity} {item.unit}
-                      </TableCell>
+                      <TableCell className="text-right text-gray-300">{item.quantity}</TableCell>
+                      <TableCell className="text-gray-400">{item.unit || "—"}</TableCell>
                       <TableCell className="text-right text-gray-300">${money(item.rate)}</TableCell>
 
                       <TableCell className="text-center print:hidden">
