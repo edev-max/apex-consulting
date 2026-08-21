@@ -34,6 +34,14 @@ import {
   Cell,
   Legend,
 } from "recharts"
+import {
+  budgetDiscount,
+  budgetSubtotal,
+  budgetTotal,
+  hasAnyDiscount,
+  itemDiscount,
+  itemNet,
+} from "@/lib/budget-math"
 
 interface Budget {
   id: string
@@ -481,25 +489,37 @@ export function DebtReport({
           overdueList
             .map((b) => {
               const items = (b.items || []) as any[]
-              const totalB = items.reduce((s, it) => s + Number(it.quantity) * Number(it.rate), 0)
+              const subtotalB = budgetSubtotal(items)
+              const discountB = budgetDiscount(items)
+              const totalB = budgetTotal(items)
+              const showDiscounts = hasAnyDiscount(items)
               const issued = new Date(b.date)
               const due = new Date(issued.getTime() + 7 * 24 * 60 * 60 * 1000)
               const overdueAmount = overdueOf(b)
               const isPartial = overdueAmount < pendingOf(b)
+              const colCount = showDiscounts ? 6 : 5
               const rows =
                 items.length === 0
-                  ? '<tr><td colspan="5" style="text-align:center;color:#999;padding:24px;">Sin ítems</td></tr>'
+                  ? `<tr><td colspan="${colCount}" style="text-align:center;color:#999;padding:24px;">Sin ítems</td></tr>`
                   : items
-                      .map(
-                        (it, i) => `
+                      .map((it, i) => {
+                        const dis = itemDiscount(it)
+                        return `
                 <tr>
                   <td style="text-align:center;font-weight:700;">${i + 1}</td>
                   <td>${it.description ?? ""}</td>
                   <td style="text-align:right;">$${fmtMoney(it.rate)}</td>
                   <td style="text-align:center;">${it.quantity}</td>
-                  <td style="text-align:right;font-weight:600;">$${fmtMoney(Number(it.quantity) * Number(it.rate))}</td>
-                </tr>`,
-                      )
+                  ${
+                    showDiscounts
+                      ? `<td style="text-align:right;color:${dis > 0 ? "#b91c1c" : "#9ca3af"};">${
+                          dis > 0 ? `−$${fmtMoney(dis)}` : "—"
+                        }</td>`
+                      : ""
+                  }
+                  <td style="text-align:right;font-weight:600;">$${fmtMoney(itemNet(it))}</td>
+                </tr>`
+                      })
                       .join("")
               return `
         <div style="page-break-inside: avoid; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; margin-bottom:24px;">
@@ -530,17 +550,30 @@ export function DebtReport({
                   <th>Descripción</th>
                   <th style="text-align:right;">Precio</th>
                   <th style="text-align:center;">Cantidad</th>
+                  ${showDiscounts ? '<th style="text-align:right;">Descuento</th>' : ""}
                   <th style="text-align:right;">Total</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
               <tfoot>
+                ${
+                  showDiscounts
+                    ? `<tr style="font-weight:600;">
+                  <td colspan="${colCount - 1}" style="text-align:right;padding:8px 12px;color:#6b7280;">Subtotal:</td>
+                  <td style="text-align:right;color:#6b7280;">$${fmtMoney(subtotalB)}</td>
+                </tr>
+                <tr style="font-weight:600;">
+                  <td colspan="${colCount - 1}" style="text-align:right;padding:8px 12px;color:#b91c1c;">Descuento:</td>
+                  <td style="text-align:right;color:#b91c1c;">−$${fmtMoney(discountB)}</td>
+                </tr>`
+                    : ""
+                }
                 <tr style="background-color:#f3f4f6;font-weight:bold;border-top:3px solid #3b82f6;">
-                  <td colspan="4" style="text-align:right;padding:12px;">TOTAL:</td>
+                  <td colspan="${colCount - 1}" style="text-align:right;padding:12px;">TOTAL:</td>
                   <td style="text-align:right;color:#1e40af;font-size:15px;">$${fmtMoney(totalB)}</td>
                 </tr>
                 <tr style="background-color:#fef2f2;font-weight:bold;">
-                  <td colspan="4" style="text-align:right;padding:12px;color:#b91c1c;">MONTO VENCIDO${
+                  <td colspan="${colCount - 1}" style="text-align:right;padding:12px;color:#b91c1c;">MONTO VENCIDO${
                     isPartial ? ` (${overduePercentOf(b)}% del saldo)` : ""
                   }:</td>
                   <td style="text-align:right;color:#dc2626;font-size:15px;">$${fmtMoney(overdueAmount)}</td>
