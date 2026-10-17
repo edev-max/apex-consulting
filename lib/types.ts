@@ -75,6 +75,8 @@ export interface Settings {
   statement_scope: StatementScope
   /** Dirección pública de la app: desde ahí se procesa el envío automático */
   app_url: string
+  /** Términos y condiciones del presupuesto (migración 13); vacío = DEFAULT_BUDGET_TERMS */
+  budget_terms: string
 }
 
 /** A quién le llega el estado de cuenta semanal: solo con vencido o todos con saldo */
@@ -146,4 +148,11 @@ export const DEFAULT_SETTINGS: Settings = {
   statement_hour: 8,
   statement_scope: "late",
   app_url: "",
+  budget_terms: "",
 }
+
+/** Términos con los que se imprimía el presupuesto. Una línea en blanco separa
+    párrafos; **así** va en negrita; {dias} y {anticipo} se llenan en cada PDF. */
+export const DEFAULT_BUDGET_TERMS = `**Modalidad post-pago:** el presupuesto cuenta con {dias} días hábiles para su cancelación a partir de su aprobación. Transcurrido dicho plazo sin recibir el pago, los montos podrán estar sujetos a modificaciones o recargos por retraso.
+
+**Modalidad prepago:** se abona {anticipo} del presupuesto al inicio del trabajo y el resto a su entrega o finalización.`

@@ -66,10 +66,11 @@ const toItem = (d: Draft): BudgetItem => {
 
 const blank = (): Draft => ({
   id: uid(),
-  category: "Horas de desarrollo",
+  category: "Desarrollo",
   description: "",
-  quantity: "",
-  unit: "Horas",
+  // Precio fijo: 1 sin unidad. Cantidad y unidad quedan para ítems que se cuentan (licencias, equipos…)
+  quantity: "1",
+  unit: "",
   rate: "",
   discount_type: "percent",
   discount_value: "",
@@ -409,7 +410,7 @@ export function BudgetEditor({ budget, source }: { budget?: Budget; source?: Bud
                       </label>
                       <label className="block">
                         <span className="field-label">Unidad</span>
-                        <input className="input" value={d.unit} onChange={(e) => setDraft(d.id, { unit: e.target.value })} />
+                        <input className="input" value={d.unit} onChange={(e) => setDraft(d.id, { unit: e.target.value })} placeholder="Opcional" />
                       </label>
                       <label className="block">
                         <span className="field-label">Precio ($)</span>

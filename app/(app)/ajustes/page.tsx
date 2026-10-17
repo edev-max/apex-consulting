@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useRate } from "@/hooks/rate"
 import { Field, PageHeader, Panel, useToast } from "@/components/ui/kit"
 import { WeeklyPanel } from "@/components/settings/weekly-panel"
+import { TermsPanel } from "@/components/settings/terms-panel"
 import { dateFmt, rateFmt } from "@/lib/format"
 import type { Settings } from "@/lib/types"
 
@@ -60,7 +61,7 @@ function MailStatus() {
 }
 
 export default function AjustesPage() {
-  const { settings, profile, schemaReady, autoReady, saveSettings, saveProfile } = useData()
+  const { settings, profile, schemaReady, autoReady, termsReady, saveSettings, saveProfile } = useData()
   const { user, changePassword } = useAuth()
   const { rate, rateDate } = useRate()
   const toast = useToast()
@@ -83,7 +84,7 @@ export default function AjustesPage() {
     e.preventDefault()
     setSettingsError(null)
     setSavingSettings(true)
-    // Este formulario solo edita los datos de los PDF: el envío semanal se guarda en su panel
+    // Este formulario solo edita los datos de los PDF: el envío semanal y los términos se guardan en su panel
     const { error } = await saveSettings({
       ...form,
       statement_auto: settings.statement_auto,
@@ -91,6 +92,7 @@ export default function AjustesPage() {
       statement_hour: settings.statement_hour,
       statement_scope: settings.statement_scope,
       app_url: settings.app_url,
+      budget_terms: settings.budget_terms,
     })
     setSavingSettings(false)
     if (error) return setSettingsError(error)
@@ -125,52 +127,56 @@ export default function AjustesPage() {
       <div className="grid gap-6 xl:grid-cols-12">
         <WeeklyPanel className="xl:col-span-12" />
 
-        <Panel className="xl:col-span-7" title="Datos que salen en los PDF" shadow>
-          {!schemaReady && (
-            <p className="mb-4 border-2 border-amber bg-amber-bg px-3 py-2.5 text-[13.5px] text-ink-2">
-              <b className="text-amber">Solo lectura por ahora.</b> Para editarlos hay que aplicar la migración{" "}
-              <code className="font-mono text-[12.5px]">scripts/11-cobros-bs-aprobacion-y-seguridad.sql</code>. Los PDF usan estos valores.
-            </p>
-          )}
-          <form onSubmit={submitSettings} className="grid gap-4">
-            <fieldset disabled={!schemaReady} className="grid gap-4 disabled:opacity-60">
-              <Field label="Nombre en el pie de página" htmlFor="s-company" hint="Vacío = Apex Consulting">
-                <input id="s-company" className="input" value={form.company_name} onChange={set("company_name")} />
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Teléfono (pago móvil)" htmlFor="s-phone">
-                  <input id="s-phone" className="input num" value={form.payment_phone} onChange={set("payment_phone")} />
+        <div className="flex flex-col gap-6 xl:col-span-7">
+          <Panel title="Datos que salen en los PDF" shadow>
+            {!schemaReady && (
+              <p className="mb-4 border-2 border-amber bg-amber-bg px-3 py-2.5 text-[13.5px] text-ink-2">
+                <b className="text-amber">Solo lectura por ahora.</b> Para editarlos hay que aplicar la migración{" "}
+                <code className="font-mono text-[12.5px]">scripts/11-cobros-bs-aprobacion-y-seguridad.sql</code>. Los PDF usan estos valores.
+              </p>
+            )}
+            <form onSubmit={submitSettings} className="grid gap-4">
+              <fieldset disabled={!schemaReady} className="grid gap-4 disabled:opacity-60">
+                <Field label="Nombre en el pie de página" htmlFor="s-company" hint="Vacío = Apex Consulting">
+                  <input id="s-company" className="input" value={form.company_name} onChange={set("company_name")} />
                 </Field>
-                <Field label="Banco" htmlFor="s-bank">
-                  <input id="s-bank" className="input" value={form.payment_bank} onChange={set("payment_bank")} />
-                </Field>
-                <Field label="Número de cuenta" htmlFor="s-account" hint="Los 20 dígitos, sin espacios">
-                  <input id="s-account" className="input num" inputMode="numeric" value={form.payment_account} onChange={set("payment_account")} />
-                </Field>
-                <Field label="Cédula o RIF" htmlFor="s-id">
-                  <input id="s-id" className="input num" value={form.payment_id_number} onChange={set("payment_id_number")} />
-                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Teléfono (pago móvil)" htmlFor="s-phone">
+                    <input id="s-phone" className="input num" value={form.payment_phone} onChange={set("payment_phone")} />
+                  </Field>
+                  <Field label="Banco" htmlFor="s-bank">
+                    <input id="s-bank" className="input" value={form.payment_bank} onChange={set("payment_bank")} />
+                  </Field>
+                  <Field label="Número de cuenta" htmlFor="s-account" hint="Los 20 dígitos, sin espacios">
+                    <input id="s-account" className="input num" inputMode="numeric" value={form.payment_account} onChange={set("payment_account")} />
+                  </Field>
+                  <Field label="Cédula o RIF" htmlFor="s-id">
+                    <input id="s-id" className="input num" value={form.payment_id_number} onChange={set("payment_id_number")} />
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-[1fr_1fr_150px]">
+                  <Field label="Correo de contacto" htmlFor="s-email">
+                    <input id="s-email" type="email" className="input" value={form.contact_email} onChange={set("contact_email")} />
+                  </Field>
+                  <Field label="Sitio web" htmlFor="s-web">
+                    <input id="s-web" className="input" value={form.website} onChange={set("website")} />
+                  </Field>
+                  <Field label="Vence a los (días)" htmlFor="s-due">
+                    <input id="s-due" type="number" min={1} max={120} className="input num" value={form.due_days} onChange={set("due_days")} />
+                  </Field>
+                </div>
+              </fieldset>
+              {settingsError && <p className="border-2 border-amber bg-amber-bg px-3 py-2 text-[13.5px] font-semibold text-amber">{settingsError}</p>}
+              <div>
+                <button type="submit" className="btn-red" disabled={!schemaReady || savingSettings}>
+                  {savingSettings ? "Guardando…" : "Guardar datos"}
+                </button>
               </div>
-              <div className="grid gap-4 sm:grid-cols-[1fr_1fr_150px]">
-                <Field label="Correo de contacto" htmlFor="s-email">
-                  <input id="s-email" type="email" className="input" value={form.contact_email} onChange={set("contact_email")} />
-                </Field>
-                <Field label="Sitio web" htmlFor="s-web">
-                  <input id="s-web" className="input" value={form.website} onChange={set("website")} />
-                </Field>
-                <Field label="Vence a los (días)" htmlFor="s-due">
-                  <input id="s-due" type="number" min={1} max={120} className="input num" value={form.due_days} onChange={set("due_days")} />
-                </Field>
-              </div>
-            </fieldset>
-            {settingsError && <p className="border-2 border-amber bg-amber-bg px-3 py-2 text-[13.5px] font-semibold text-amber">{settingsError}</p>}
-            <div>
-              <button type="submit" className="btn-red" disabled={!schemaReady || savingSettings}>
-                {savingSettings ? "Guardando…" : "Guardar datos"}
-              </button>
-            </div>
-          </form>
-        </Panel>
+            </form>
+          </Panel>
+
+          <TermsPanel />
+        </div>
 
         <div className="flex flex-col gap-6 xl:col-span-5">
           <Panel title="Tu perfil">
@@ -249,6 +255,7 @@ export default function AjustesPage() {
                 <dd className="flex flex-wrap justify-end gap-1.5 text-right">
                   {schemaReady ? <span className="tag-ok">Migración 11 aplicada</span> : <span className="tag-warn">Falta la migración 11</span>}
                   {autoReady ? <span className="tag-ok">Migración 12 aplicada</span> : <span className="tag-warn">Falta la migración 12</span>}
+                  {termsReady ? <span className="tag-ok">Migración 13 aplicada</span> : <span className="tag-warn">Falta la migración 13</span>}
                 </dd>
               </div>
               <div className="border-t border-ink/15 pt-3 text-[13px] text-ink-2">

@@ -17,7 +17,7 @@ import {
   itemNet,
 } from "./budget-math"
 import type { AdvanceType, Budget, BudgetItem, Payment, Settings } from "./types"
-import { methodLabel } from "./types"
+import { DEFAULT_BUDGET_TERMS, methodLabel } from "./types"
 import { AGING, type AgingId } from "./metrics"
 
 const C = BRAND
@@ -235,23 +235,46 @@ function payBox(s: Settings) {
 
 /* ---------- Ítems ---------- */
 
+/** Precio fijo: cada ítem es 1 sin unidad, así que Cantidad y Precio sobran */
+const fixedPrice = (items: BudgetItem[]) => items.every((it) => num(it.quantity) === 1 && !(it.unit ?? "").trim())
+
 function itemsTable(items: BudgetItem[]) {
   const showDiscounts = hasAnyDiscount(items)
-  const cols = showDiscounts ? 6 : 5
+  const showQty = !fixedPrice(items)
+  const cols = 3 + (showQty ? 2 : 0) + (showDiscounts ? 1 : 0)
   const rows = items.length
     ? items
         .map((it, i) => {
           const d = itemDiscount(it)
           return `<tr><td class="n"><span class="ix">${i + 1}</span></td>
 <td>${it.category ? `<span class="cat">${esc(it.category)}</span>` : ""}<span class="dtext">${esc(it.description)}</span></td>
-<td class="r"><span class="q">${plain(num(it.quantity))}</span><span class="sub">${esc(it.unit || "")}</span></td>
-<td class="r">${usd(num(it.rate))}<span class="sub">c/u</span></td>
+${showQty ? `<td class="r"><span class="q">${plain(num(it.quantity))}</span><span class="sub">${esc(it.unit || "")}</span></td>
+<td class="r">${usd(num(it.rate))}<span class="sub">c/u</span></td>` : ""}
 ${showDiscounts ? `<td class="r">${d > 0 ? `<span class="dtag">−${plain(itemDiscountPercent(it))} %</span><span class="sub disc">−${usd(d)}</span>` : `<span class="mute">—</span>`}</td>` : ""}
 <td class="r">${d > 0 ? `<s class="gross">${usd(itemGross(it))}</s>` : ""}<span class="net">${usd(itemNet(it))}</span></td></tr>`
         })
         .join("")
     : `<tr><td colspan="${cols}" class="c mute" style="padding:28px">Sin ítems</td></tr>`
-  return `<div class="tw"><table class="t items"><thead><tr><th>#</th><th>Descripción</th><th class="r">Cantidad</th><th class="r">Precio</th>${showDiscounts ? `<th class="r">Descuento</th>` : ""}<th class="r">Importe</th></tr></thead><tbody>${rows}</tbody></table></div>`
+  return `<div class="tw"><table class="t items"><thead><tr><th>#</th><th>Descripción</th>${showQty ? `<th class="r">Cantidad</th><th class="r">Precio</th>` : ""}${showDiscounts ? `<th class="r">Descuento</th>` : ""}<th class="r">Importe</th></tr></thead><tbody>${rows}</tbody></table></div>`
+}
+
+/* ---------- Términos y condiciones ---------- */
+
+/** Texto de Ajustes → HTML: una línea en blanco separa párrafos, **negrita**,
+    {dias} = días para pagar y {anticipo} = "el 50 %" o "un anticipo de $ 300,00".
+    Se escapa antes de dar formato: lo que se escribe nunca se vuelve HTML. */
+export function termsHTML(text: string, vars: { dias: number; anticipo: string }) {
+  return (text.trim() || DEFAULT_BUDGET_TERMS)
+    .split(/\n\s*\n/)
+    .map(
+      (p) =>
+        `<p>${esc(p.trim())
+          .replace(/\{d[ií]as\}/gi, String(vars.dias))
+          .replace(/\{anticipo\}/gi, esc(vars.anticipo))
+          .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+          .replace(/\n/g, "<br>")}</p>`,
+    )
+    .join("")
 }
 
 /* ---------- Anticipo ---------- */
@@ -314,8 +337,7 @@ ${adv > 0 ? `<div class="split"><div><div class="lbl">${esc(advanceText(doc))}</
 </div></div>
 <div class="cols">
   <div class="box"><h4>Términos y condiciones</h4><div class="in">
-    <p><b>Modalidad post-pago:</b> el presupuesto cuenta con ${n} días hábiles para su cancelación a partir de su aprobación. Transcurrido dicho plazo sin recibir el pago, los montos podrán estar sujetos a modificaciones o recargos por retraso.</p>
-    <p><b>Modalidad prepago:</b> se abona ${prepaid} del presupuesto al inicio del trabajo y el resto a su entrega o finalización.</p>
+    ${termsHTML(settings.budget_terms, { dias: n, anticipo: prepaid })}
   </div></div>
   ${payBox(settings)}
 </div>`
@@ -380,66 +402,48 @@ export function budgetStanding(b: Budget): BudgetStanding {
   }
 }
 
-/** Una línea de lo que debe el cliente: vencida o pendiente por vencer */
-export interface StatementLine {
+/** Una fila del estado de cuenta: un presupuesto con su total, lo abonado, lo vencido y el saldo pendiente */
+export interface StatementBudgetRow {
   budget: Budget
-  /** "Anticipo 50 %", "Saldo", "Monto acordado", "Resto contra entrega"… */
-  concept: string
-  isAdvance: boolean
-  amount: number
-  late: boolean
+  standing: BudgetStanding
+  /** Lo vencido de este presupuesto: lo que se le cobra ahora, si está vencido */
+  late: number
   lateDays: number
-  /** Fecha de vencimiento; null = contra entrega o por acordar */
-  dueOn: string | null
-  /** Texto cuando no hay fecha */
-  dueText?: string
+  /** Qué está vencido: "Anticipo 50 %", "Saldo", "Monto acordado" */
+  lateConcept: string | null
+  dueOn: string
 }
 
-/** Separa lo que se cobra en vencido y pendiente por vencer. Lo que queda de cada
-    presupuesto después de lo que se cobra ahora (p. ej. el resto contra entrega
-    cuando se cobra el anticipo) también es saldo pendiente, aún no vencido. */
-export function statementSections(rows: StatementRow[], dueDays: number) {
-  const late: StatementLine[] = []
-  const upcoming: StatementLine[] = []
-  let pending = 0
-  for (const r of rows) {
+/** Una fila por presupuesto y los totales del estado de cuenta */
+export function statementTable(rows: StatementRow[], dueDays: number) {
+  const list: StatementBudgetRow[] = rows.map((r) => {
     const b = r.budget
-    const st = budgetStanding(b)
-    pending += st.pending
+    const standing = budgetStanding(b)
     const start = b.approved_on && b.approved_on > b.date ? b.approved_on : b.date
-    const dueOn = addDays(start, dueDays)
-    const now = Math.min(Math.max(r.due, 0), st.pending)
-    if (now > EPS) {
-      ;(r.late ? late : upcoming).push({
-        budget: b,
-        concept: r.label,
-        isAdvance: r.kind === "anticipo",
-        amount: now,
-        late: r.late,
-        lateDays: r.lateDays,
-        dueOn,
-      })
+    const late = r.late ? Math.min(Math.max(r.due, 0), standing.pending) : 0
+    return {
+      budget: b,
+      standing,
+      late,
+      lateDays: late > EPS ? r.lateDays : 0,
+      lateConcept: late > EPS ? r.label : null,
+      dueOn: addDays(start, dueDays),
     }
-    const rest = st.pending - now
-    if (rest > EPS) {
-      const afterAdvance = r.kind === "anticipo"
-      upcoming.push({
-        budget: b,
-        concept: afterAdvance ? "Resto contra entrega" : "Resto del saldo",
-        isAdvance: false,
-        amount: rest,
-        late: false,
-        lateDays: 0,
-        dueOn: null,
-        dueText: afterAdvance ? "Contra entrega" : "Por acordar",
-      })
-    }
+  })
+  const sum = (f: (x: StatementBudgetRow) => number) => list.reduce((t, x) => t + f(x), 0)
+  return {
+    list,
+    total: sum((x) => x.standing.total),
+    paid: sum((x) => x.standing.paid),
+    late: sum((x) => x.late),
+    pending: sum((x) => x.standing.pending),
   }
-  late.sort((a, b) => b.lateDays - a.lateDays || a.budget.number.localeCompare(b.budget.number))
-  upcoming.sort((a, b) => (a.dueOn ?? "9999").localeCompare(b.dueOn ?? "9999") || a.budget.number.localeCompare(b.budget.number))
-  const lateTotal = late.reduce((t, l) => t + l.amount, 0)
-  const upcomingTotal = upcoming.reduce((t, l) => t + l.amount, 0)
-  return { late, upcoming, lateTotal, upcomingTotal, pending }
+}
+
+/** "Anticipo 50 % · pagado" o "Anticipo 50 % · falta $ 306,00"; null sin anticipo */
+export function advanceNote(st: BudgetStanding) {
+  if (!st.advanceLabel) return null
+  return { text: `${st.advanceLabel} · ${st.advanceDue > EPS ? `falta ${usd(st.advanceDue)}` : "pagado"}`, due: st.advanceDue > EPS }
 }
 
 /** A qué se aplicó cada abono: primero completa el anticipo, el resto va al saldo */
@@ -468,64 +472,30 @@ export function allocationLabel(a: { advance: number; balance: number; hasAdvanc
   return a.advance > EPS ? "Anticipo" : "Saldo"
 }
 
-/* El estado de cuenta se manda al cliente: lo vencido en grande, lo pendiente
-   que todavía no vence, cómo está cada presupuesto (anticipo, abonado y
-   pendiente) y dónde pagar. Sin detalle de ítems. */
+/* El estado de cuenta se manda al cliente: lo vencido en grande y una tabla con
+   cada presupuesto (total, abonado, vencido y saldo pendiente), más dónde pagar.
+   Sin detalle de ítems. */
 export function statementReport(i: StatementInput) {
   const { settings: s } = i
-  const sec = statementSections(i.rows, s.due_days)
-  const hasLate = sec.lateTotal > EPS
-  const budgets = Array.from(new Map(i.rows.map((r) => [r.budget.id, r.budget])).values())
+  const tb = statementTable(i.rows, s.due_days)
+  const hasLate = tb.late > EPS
+  const budgets = tb.list.map((x) => x.budget)
+  const lateCount = tb.list.filter((x) => x.late > EPS).length
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-  const conceptCell = (l: StatementLine) =>
-    `<span class="dtext">${esc(l.concept)}</span>${l.isAdvance ? `<span class="sub">Anticipo para iniciar el trabajo</span>` : ""}`
-
-  const lateTable = hasLate
-    ? `<h2 class="sec d2"><span class="tri"></span>Vencido</h2>
-<div class="tw"><table class="t items"><thead><tr><th>Nº</th><th>Proyecto</th><th>Concepto</th><th>Venció</th><th class="r">A pagar</th></tr></thead><tbody>
-${sec.late
-  .map(
-    (l) => `<tr><td class="b nw">${esc(l.budget.number)}</td><td><span class="dtext">${esc(l.budget.project_name)}</span></td><td>${conceptCell(l)}</td>
-<td class="nw">${l.dueOn ? dateFmt(l.dueOn) : "—"}<span class="sub late">${l.lateDays > 0 ? `${l.lateDays} días de atraso` : "Vence hoy"}</span></td>
-<td class="r"><span class="net late">${usd(l.amount)}</span></td></tr>`,
-  )
-  .join("")}</tbody>
-<tfoot><tr><td colspan="4">Total vencido</td><td class="r late">${usd(sec.lateTotal)}</td></tr></tfoot></table></div>`
-    : ""
-
-  const upcomingTable = sec.upcoming.length
-    ? `<h2 class="sec d2"><span class="tri"></span>Pendiente por vencer</h2>
-<div class="tw"><table class="t items"><thead><tr><th>Nº</th><th>Proyecto</th><th>Concepto</th><th>Vence</th><th class="r">Monto</th></tr></thead><tbody>
-${sec.upcoming
-  .map(
-    (l) => `<tr><td class="b nw">${esc(l.budget.number)}</td><td><span class="dtext">${esc(l.budget.project_name)}</span></td><td>${conceptCell(l)}</td>
-<td class="nw">${l.dueOn ? dateFmt(l.dueOn) : esc(l.dueText ?? "—")}</td><td class="r"><span class="net">${usd(l.amount)}</span></td></tr>`,
-  )
-  .join("")}</tbody>
-<tfoot><tr><td colspan="4">Total pendiente por vencer</td><td class="r">${usd(sec.upcomingTotal)}</td></tr></tfoot></table></div>`
-    : ""
-
-  const standings = budgets.map((b) => ({ b, st: budgetStanding(b) }))
-  const standingTable = `<h2 class="sec d2"><span class="tri"></span>Estado de cada presupuesto</h2>
-<div class="tw"><table class="t items"><thead><tr><th>Nº</th><th>Proyecto</th><th class="r">Total</th><th>Anticipo</th><th class="r">Abonado</th><th class="r">Pendiente</th></tr></thead><tbody>
-${standings
-  .map(
-    ({ b, st }) => `<tr><td class="b nw">${esc(b.number)}</td><td><span class="dtext">${esc(b.project_name)}</span></td><td class="r">${usd(st.total)}</td>
-<td>${
-      st.advanceLabel
-        ? `<span class="dtext">${esc(st.advanceLabel)} · ${usd(st.advance)}</span>${
-            st.advanceDue > EPS
-              ? `<span class="sub late">${st.advancePaid > EPS ? `Abonado ${usd(st.advancePaid)} · falta ${usd(st.advanceDue)}` : `Falta ${usd(st.advanceDue)}`}</span>`
-              : `<span class="sub ok">Pagado</span>`
-          }`
-        : `<span class="mute">Sin anticipo</span><span class="sub">Todo al vencer</span>`
-    }</td>
-<td class="r">${usd(st.paid)}</td><td class="r"><span class="net">${usd(st.pending)}</span></td></tr>`,
-  )
-  .join("")}</tbody>
-<tfoot><tr><td colspan="2">Total</td><td class="r">${usd(standings.reduce((t, x) => t + x.st.total, 0))}</td><td></td>
-<td class="r">${usd(standings.reduce((t, x) => t + x.st.paid, 0))}</td><td class="r">${usd(sec.pending)}</td></tr></tfoot></table></div>`
+  const rows = tb.list
+    .map((x) => {
+      const note = advanceNote(x.standing)
+      const lateCell =
+        x.late > EPS
+          ? `<span class="net late">${usd(x.late)}</span><span class="sub late">${esc(x.lateConcept ?? "")}${x.lateDays > 0 ? ` · ${x.lateDays} d de atraso` : ""}</span>`
+          : `<span class="mute">—</span><span class="sub">${x.dueOn > i.today ? `Vence ${dateFmt(x.dueOn)}` : "Al día"}</span>`
+      return `<tr><td class="b nw">${esc(x.budget.number)}</td>
+<td><span class="dtext">${esc(x.budget.project_name)}</span>${note ? `<span class="sub ${note.due ? "late" : "ok"}">${esc(note.text)}</span>` : ""}</td>
+<td class="r">${usd(x.standing.total)}</td><td class="r">${usd(x.standing.paid)}</td><td class="r">${lateCell}</td>
+<td class="r"><span class="net">${usd(x.standing.pending)}</span></td></tr>`
+    })
+    .join("")
 
   const allocation = paymentAllocation(i.payments, budgets)
   const pays =
@@ -540,21 +510,21 @@ ${i.payments
   .join("")}</tbody></table></div>`
       : ""
 
-  const notLate = sec.pending - sec.lateTotal
   const body = `${header("Estado de cuenta", esc(dateLong(i.today)))}
 <div class="client"><div class="lbl">Cliente</div><div class="name d">${esc(i.clientName)}</div></div>
 <div class="hero-row">
   <div class="hero">
     <div class="lbl">${hasLate ? "Vencido · a pagar" : "Saldo pendiente"}</div>
-    <div class="amt d">${usd(hasLate ? sec.lateTotal : sec.pending)}</div>
-    <div class="meta2">${hasLate ? `${plural(sec.late.length, "cobro vencido", "cobros vencidos")}` : `Nada vencido · ${plural(budgets.length, "presupuesto", "presupuestos")}`}</div>
-    ${hasLate && notLate > EPS ? `<div class="more"><span>Pendiente por vencer</span><b>${usd(notLate)}</b></div><div class="more total"><span>Saldo total pendiente</span><b>${usd(sec.pending)}</b></div>` : ""}
+    <div class="amt d">${usd(hasLate ? tb.late : tb.pending)}</div>
+    <div class="meta2">${hasLate ? plural(lateCount, "presupuesto con monto vencido", "presupuestos con monto vencido") : `Nada vencido · ${plural(budgets.length, "presupuesto", "presupuestos")}`}</div>
+    ${hasLate ? `<div class="more total"><span>Saldo total pendiente</span><b>${usd(tb.pending)}</b></div>` : ""}
   </div>
   ${payBox(s)}
 </div>
-${lateTable}
-${upcomingTable}
-${standingTable}
+<h2 class="sec d2"><span class="tri"></span>Detalle por presupuesto</h2>
+<div class="tw"><table class="t items"><thead><tr><th>Nº</th><th>Proyecto</th><th class="r">Total</th><th class="r">Abonado</th><th class="r">Vencido</th><th class="r">Saldo pendiente</th></tr></thead>
+<tbody>${rows || `<tr><td colspan="6" class="c mute" style="padding:24px">Sin saldos pendientes</td></tr>`}</tbody>
+<tfoot><tr><td colspan="2">Total</td><td class="r">${usd(tb.total)}</td><td class="r">${usd(tb.paid)}</td><td class="r ${hasLate ? "late" : ""}">${usd(tb.late)}</td><td class="r">${usd(tb.pending)}</td></tr></tfoot></table></div>
 ${pays}`
 
   return shell({ title: `Estado de cuenta · ${i.clientName}`, body, settings: s })

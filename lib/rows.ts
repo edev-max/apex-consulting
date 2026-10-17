@@ -21,6 +21,8 @@ export const BUDGET_COLUMNS_NEW = BUDGET_COLUMNS + ",approved_on,advance_type,ad
 export const SETTINGS_COLUMNS = "id,company_name,payment_phone,payment_bank,payment_account,payment_id_number,contact_email,website,due_days"
 /** Columnas de la migración 12 (envío automático semanal) */
 export const SETTINGS_COLUMNS_AUTO = SETTINGS_COLUMNS + ",statement_auto,statement_weekday,statement_hour,statement_scope,app_url"
+/** Columna de la migración 13 (términos del presupuesto) */
+export const SETTINGS_COLUMNS_TERMS = SETTINGS_COLUMNS_AUTO + ",budget_terms"
 export const CLIENT_COLUMNS = "id,name,email"
 export const CLIENT_COLUMNS_NEW = CLIENT_COLUMNS + ",contacts,auto_statement"
 
@@ -71,6 +73,7 @@ export function toSettings(row: any): Settings {
     statement_hour: int(r.statement_hour, d.statement_hour, 0, 23),
     statement_scope: (r.statement_scope === "open" ? "open" : "late") as StatementScope,
     app_url: r.app_url ?? "",
+    budget_terms: r.budget_terms ?? "",
   }
 }
 

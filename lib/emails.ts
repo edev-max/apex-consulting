@@ -11,7 +11,7 @@ import { BRAND } from "./brand"
 import { addDays, dateFmt, dateLong, esc, num, plain, usd } from "./format"
 import { budgetTotal } from "./budget-math"
 import type { Settings } from "./types"
-import { budgetStanding, statementSections, type BudgetDoc, type StatementLine, type StatementRow } from "./reports"
+import { advanceNote, statementTable, type BudgetDoc, type StatementBudgetRow, type StatementRow } from "./reports"
 
 const C = BRAND
 const SNOW = "#F3F5FB"
@@ -244,29 +244,37 @@ export function defaultStatementMessage(i: { clientName: string; rows: Statement
 Si ya hiciste el pago, responde este correo con la referencia y lo registramos.`
 }
 
-/** Detalle de una línea: concepto (anticipo o no), vencimiento y lo abonado del presupuesto */
-const lineDetail = (l: StatementLine) => {
-  const st = budgetStanding(l.budget)
-  const when = l.late ? (l.lateDays > 0 ? `${l.lateDays} días de atraso` : "vence hoy") : l.dueOn ? `vence el ${dateFmt(l.dueOn)}` : (l.dueText ?? "").toLowerCase()
-  // "Resto contra entrega" ya dice cuándo: no repetirlo
-  const showWhen = when && !l.concept.toLowerCase().includes(when) ? when : ""
-  return [l.concept, showWhen, `abonado ${usd(st.paid)} de ${usd(st.total)}`].filter(Boolean).join(" · ")
+/** Línea de detalle de un presupuesto: total, abonado, pendiente y el anticipo si tiene */
+const budgetDetail = (x: StatementBudgetRow) => {
+  const note = advanceNote(x.standing)
+  return [`Total ${usd(x.standing.total)}`, `abonado ${usd(x.standing.paid)}`, `pendiente ${usd(x.standing.pending)}`, note?.text ?? ""]
+    .filter(Boolean)
+    .join(" · ")
 }
 
-function linesTable(title: string, list: StatementLine[], totalLabel: string, total: number, late: boolean) {
+/** Una fila por presupuesto: a la derecha lo vencido (o "—") */
+function budgetsTable(list: StatementBudgetRow[], late: number, pending: number) {
+  const cell = (n: number) => `padding:9px 12px;${n ? `border-top:1.5px solid ${ROW};` : ""}`
   return table(
-    `<tr><td colspan="3" style="padding:9px 12px;background:${late ? C.amberBg : C.paper};border-bottom:2px solid ${C.ink};font:800 13px ${FONT};color:${late ? C.amber : C.ink}">${title}</td></tr>
+    `<tr><td colspan="2" style="padding:9px 12px;background:${C.paper};border-bottom:2px solid ${C.ink};font:800 13px ${FONT};color:${C.ink}">Tus presupuestos</td>
+<td style="padding:9px 12px;background:${C.paper};border-bottom:2px solid ${C.ink};font:800 12px ${FONT};color:${C.ink2};text-align:right">Vencido</td></tr>
 ${list
   .map(
-    (l, n) => `<tr>
-  <td style="padding:9px 12px;${n ? `border-top:1.5px solid ${ROW};` : ""}font:800 13px ${FONT};color:${C.ink};white-space:nowrap;width:46px;vertical-align:top">${esc(l.budget.number)}</td>
-  <td style="padding:9px 4px;${n ? `border-top:1.5px solid ${ROW};` : ""}font:13px/1.35 ${FONT};color:${C.ink}">${esc(l.budget.project_name)}<div style="font:11px/1.4 ${FONT};color:${C.ink2};margin-top:2px">${esc(lineDetail(l))}</div></td>
-  <td style="padding:9px 12px;${n ? `border-top:1.5px solid ${ROW};` : ""}font:800 14px ${FONT};color:${late ? C.amber : C.ink};text-align:right;white-space:nowrap;vertical-align:top">${usd(l.amount)}</td>
+    (x, n) => `<tr>
+  <td style="${cell(n)}font:800 13px ${FONT};color:${C.ink};white-space:nowrap;width:46px;vertical-align:top">${esc(x.budget.number)}</td>
+  <td style="${cell(n)}padding-left:4px;font:13px/1.35 ${FONT};color:${C.ink}">${esc(x.budget.project_name)}<div style="font:11px/1.45 ${FONT};color:${C.ink2};margin-top:2px">${esc(budgetDetail(x))}</div></td>
+  <td style="${cell(n)}font:800 14px ${FONT};color:${x.late > 0.005 ? C.amber : C.mute};text-align:right;white-space:nowrap;vertical-align:top">${
+    x.late > 0.005
+      ? `${usd(x.late)}<div style="font:600 11px ${FONT};color:${C.amber};margin-top:2px">${esc(x.lateConcept ?? "")}${x.lateDays > 0 ? ` · ${x.lateDays} d` : ""}</div>`
+      : "—"
+  }</td>
 </tr>`,
   )
   .join("")}
-<tr><td colspan="2" style="padding:10px 12px;border-top:2px solid ${C.ink};background:${C.paper};font:800 13px ${FONT};color:${C.ink}">${totalLabel}</td>
-<td style="padding:10px 12px;border-top:2px solid ${C.ink};background:${C.paper};font:900 15px ${FONT};color:${late ? C.amber : C.ink};text-align:right;white-space:nowrap">${usd(total)}</td></tr>`,
+<tr><td colspan="2" style="padding:10px 12px;border-top:2px solid ${C.ink};background:${C.amberBg};font:800 13px ${FONT};color:${C.ink}">Total vencido</td>
+<td style="padding:10px 12px;border-top:2px solid ${C.ink};background:${C.amberBg};font:900 15px ${FONT};color:${C.amber};text-align:right;white-space:nowrap">${usd(late)}</td></tr>
+<tr><td colspan="2" style="padding:10px 12px;border-top:1.5px solid ${C.ink};background:${C.paper};font:800 13px ${FONT};color:${C.ink}">Saldo total pendiente</td>
+<td style="padding:10px 12px;border-top:1.5px solid ${C.ink};background:${C.paper};font:900 15px ${FONT};color:${C.ink};text-align:right;white-space:nowrap">${usd(pending)}</td></tr>`,
     `background:#ffffff;border:2px solid ${C.ink};border-right:5px solid ${C.ink};border-bottom:5px solid ${C.ink}`,
   )
 }
@@ -274,23 +282,21 @@ ${list
 export function statementEmail(i: StatementEmailInput): EmailContent {
   const { settings: s } = i
   const a = i.assets ?? PREVIEW_ASSETS
-  const sec = statementSections(i.rows, s.due_days)
-  const isLate = sec.lateTotal > 0.005
-  const notLate = sec.pending - sec.lateTotal
-  const amount = isLate ? sec.lateTotal : sec.pending
-  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+  const tb = statementTable(i.rows, s.due_days)
+  const isLate = tb.late > 0.005
+  const amount = isLate ? tb.late : tb.pending
+  const lateCount = tb.list.filter((x) => x.late > 0.005).length
 
   const lines = isLate
-    ? [count(sec.late.length, "cobro vencido", "cobros vencidos"), notLate > 0.005 ? `Pendiente por vencer: ${usd(notLate)} · saldo total ${usd(sec.pending)}` : ""]
+    ? [`${lateCount} presupuesto${lateCount === 1 ? "" : "s"} con monto vencido`, `Saldo total pendiente: ${usd(tb.pending)}`]
     : ["Nada vencido"]
 
   const body = `${paragraphs(i.message)}
 ${spacer(6)}
-${bigBlock(isLate ? "Vencido · a pagar" : "Saldo pendiente", usd(amount), lines.filter(Boolean))}
+${bigBlock(isLate ? "Vencido · a pagar" : "Saldo pendiente", usd(amount), lines)}
 ${spacer(18)}
-${isLate ? `${linesTable("Vencido", sec.late, "Total vencido", sec.lateTotal, true)}${spacer(14)}` : ""}
-${sec.upcoming.length ? `${linesTable("Pendiente por vencer", sec.upcoming, "Total pendiente por vencer", sec.upcomingTotal, false)}${spacer(14)}` : ""}
-${spacer(4)}
+${budgetsTable(tb.list, tb.late, tb.pending)}
+${spacer(18)}
 ${payBox(s)}
 ${spacer(16)}
 ${i.pdfName ? attachmentNote(i.pdfName) : ""}
@@ -301,14 +307,18 @@ ${spacer(18)}`
   const subject = isLate
     ? `Tu estado de cuenta semanal · ${usd(amount)} vencido · ${i.clientName}`
     : `Tu estado de cuenta semanal · ${i.clientName}`
-  const textList = (list: StatementLine[]) => list.map((l) => `- ${l.budget.number} ${l.budget.project_name}: ${usd(l.amount)} (${lineDetail(l)})`).join("\n")
   const text = `Saludos, ${i.clientName}
 
 ${i.message.trim()}
 
-${isLate ? `Vencido a pagar: ${usd(sec.lateTotal)}\n${textList(sec.late)}\n\n` : ""}${
-    sec.upcoming.length ? `Pendiente por vencer: ${usd(sec.upcomingTotal)}\n${textList(sec.upcoming)}\n\n` : ""
-  }Saldo total pendiente: ${usd(sec.pending)}
+${tb.list
+  .map(
+    (x) => `- ${x.budget.number} ${x.budget.project_name}: ${budgetDetail(x)}${x.late > 0.005 ? ` · VENCIDO ${usd(x.late)} (${x.lateConcept ?? ""})` : ""}`,
+  )
+  .join("\n")}
+
+Total vencido: ${usd(tb.late)}
+Saldo total pendiente: ${usd(tb.pending)}
 
 Datos de pago: ${[s.payment_phone, s.payment_bank, s.payment_account, s.payment_id_number].filter(Boolean).join(" · ")}
 

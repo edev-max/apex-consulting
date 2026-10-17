@@ -218,7 +218,8 @@ function BudgetView({ id }: { id: string }) {
                     <span className="text-ink-mute">{n + 1}.</span> {i.description}
                   </span>
                   <span className="num shrink-0 text-ink-2">
-                    {i.quantity} × {usd(Number(i.rate))}
+                    {Number(i.quantity) === 1 && !i.unit?.trim() ? "" : `${i.quantity}${i.unit?.trim() ? ` ${i.unit.trim()}` : ""} × `}
+                    {usd(Number(i.rate))}
                   </span>
                 </li>
               ))}

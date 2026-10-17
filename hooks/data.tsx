@@ -17,6 +17,7 @@ import {
   CLIENT_COLUMNS_NEW,
   SETTINGS_COLUMNS,
   SETTINGS_COLUMNS_AUTO,
+  SETTINGS_COLUMNS_TERMS,
   cleanContacts,
   clientRecordFor,
   toBudget,
@@ -26,6 +27,7 @@ import {
   toSettings,
 } from "@/lib/rows"
 import {
+  DEFAULT_BUDGET_TERMS,
   DEFAULT_SETTINGS,
   type Budget,
   type AdvanceType,
@@ -96,6 +98,8 @@ interface DataContext {
   schemaReady: boolean
   /** true con la migración 12: varios contactos por cliente y estado de cuenta semanal */
   autoReady: boolean
+  /** true con la migración 13: términos y condiciones del presupuesto editables */
+  termsReady: boolean
   reload: () => Promise<void>
   nextNumber: () => string
   createBudget: (input: BudgetInput) => Promise<Result<Budget>>
@@ -141,6 +145,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [schemaReady, setSchemaReady] = useState(false)
   const [autoReady, setAutoReady] = useState(false)
+  const [termsReady, setTermsReady] = useState(false)
 
   const loadBudgets = useCallback(async () => {
     if (!user) return
@@ -173,17 +178,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!user) return
     const supabase = getClient()
     const query = (columns: string) => supabase.from("company_settings").select(columns).eq("user_id", user.id).maybeSingle()
-    // Con la migración 12 (envío semanal), si no con la 11, si no solo id y nombre
-    const auto = await query(SETTINGS_COLUMNS_AUTO)
+    // Con la migración 13 (términos), si no con la 12 (envío semanal), si no con la 11, si no solo id y nombre
+    const terms = await query(SETTINGS_COLUMNS_TERMS)
+    const auto = terms.error ? await query(SETTINGS_COLUMNS_AUTO) : terms
     const full = auto.error ? await query(SETTINGS_COLUMNS) : auto
     if (!full.error) {
       setSchemaReady(true)
       setAutoReady(!auto.error)
+      setTermsReady(!terms.error)
       setSettings(toSettings(full.data))
       return
     }
     setSchemaReady(false)
     setAutoReady(false)
+    setTermsReady(false)
     const basic = await query("id,company_name")
     const row: any = basic.data
     setSettings({ ...DEFAULT_SETTINGS, id: row?.id, company_name: row?.company_name ?? "" })
@@ -437,6 +445,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           statement_scope: next.statement_scope === "open" ? "open" : "late",
         })
       }
+      // Vacío o igual al original = null: sigue el texto original si algún día cambia
+      if (termsReady) {
+        const terms = next.budget_terms.trim()
+        payload.budget_terms = terms && terms !== DEFAULT_BUDGET_TERMS ? terms : null
+      }
       const supabase = getClient()
       const { error } = settings.id
         ? await supabase.from("company_settings").update(payload).eq("id", settings.id).eq("user_id", user.id)
@@ -445,7 +458,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await loadSettings()
       return { data: null, error: null }
     },
-    [user, schemaReady, autoReady, settings.id, loadSettings],
+    [user, schemaReady, autoReady, termsReady, settings.id, loadSettings],
   )
 
   const saveProfile = useCallback<DataContext["saveProfile"]>(
@@ -479,6 +492,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       error,
       schemaReady,
       autoReady,
+      termsReady,
       reload,
       nextNumber,
       createBudget,
@@ -505,6 +519,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       error,
       schemaReady,
       autoReady,
+      termsReady,
       reload,
       nextNumber,
       createBudget,
