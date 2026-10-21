@@ -7,7 +7,7 @@ import { entityKey, groupNames } from "./entities"
 import { daysBetween, num, plain, usd } from "./format"
 import { clientRecordFor } from "./rows"
 import type { ChargeKind, StatementRow } from "./reports"
-import type { Budget, ClientRecord, Payment, Settings } from "./types"
+import type { Budget, ClientRecord, Settings } from "./types"
 
 /** Lo sugerido: el anticipo si el presupuesto lo tiene y falta pagarlo; si no, el saldo */
 export const suggestedKind = (b: Budget): ChargeKind => (hasAdvance(b) && advanceDueOf(b) > EPS ? "anticipo" : "saldo")
@@ -31,8 +31,6 @@ export interface WeeklyItem {
   key: string
   name: string
   rows: StatementRow[]
-  /** Abonos de los presupuestos incluidos (van en el PDF) */
-  payments: Payment[]
   due: number
   late: number
   recipients: string[]
@@ -41,7 +39,7 @@ export interface WeeklyItem {
 }
 
 /** Clientes que reciben el estado de cuenta semanal (y los que quedan fuera, con el motivo) */
-export function weeklyPlan(i: { budgets: Budget[]; payments: Payment[]; clients: ClientRecord[]; settings: Settings; today: string }) {
+export function weeklyPlan(i: { budgets: Budget[]; clients: ClientRecord[]; settings: Settings; today: string }) {
   const { settings: s, today } = i
   const open = i.budgets.filter(isOpen)
   const names = groupNames(open.map((b) => b.client_name))
@@ -61,12 +59,10 @@ export function weeklyPlan(i: { budgets: Budget[]; payments: Payment[]; clients:
     const name = names.get(key)?.name ?? key
     const record = clientRecordFor(i.clients, name)
     const recipients = (record?.contacts ?? []).map((c) => c.email)
-    const ids = new Set(list.map((b) => b.id))
     items.push({
       key,
       name,
       rows,
-      payments: i.payments.filter((p) => ids.has(p.budget_id)).sort((a, b) => a.payment_date.localeCompare(b.payment_date)),
       due,
       late,
       recipients,

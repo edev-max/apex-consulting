@@ -1,13 +1,14 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, Send } from "lucide-react"
 import { Modal } from "@/components/ui/modal"
 import { Field, Segmented, useDismissToast, useToast } from "@/components/ui/kit"
 import { useData } from "@/hooks/data"
 import { useAuth } from "@/hooks/useAuth"
 import { CID_ASSETS, PREVIEW_ASSETS, type EmailAssets, type EmailContent } from "@/lib/emails"
+import { withHeroImage } from "@/lib/email-hero"
 import { EMAIL_RE, splitEmails } from "@/lib/rows"
 import { plural } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -68,6 +69,31 @@ export function SendDialog({
   const email = useMemo(() => payload.build(message, PREVIEW_ASSETS), [payload, message])
   const [subject, setSubject] = useState(email.subject)
 
+  // El bloque del monto como GIF animado: el servidor arma el mismo que va en el correo.
+  // No depende del mensaje, así que se pide una sola vez al abrir la vista previa.
+  const heroKey = email.hero ? JSON.stringify(email.hero) : ""
+  const [heroImg, setHeroImg] = useState<{ url: string; width: number; height: number; key: string } | null>(null)
+  const heroUrl = useRef<string | null>(null)
+  useEffect(() => {
+    if (view !== "preview" || !email.hero || heroImg?.key === heroKey) return
+    let cancelled = false
+    fetch("/api/enviar/monto", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ hero: email.hero }) })
+      .then(async (res) => {
+        if (!res.ok || cancelled) return
+        const url = URL.createObjectURL(await res.blob())
+        if (heroUrl.current) URL.revokeObjectURL(heroUrl.current)
+        heroUrl.current = url
+        setHeroImg({ url, width: Number(res.headers.get("x-width")) || 1096, height: Number(res.headers.get("x-height")) || 400, key: heroKey })
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [view, heroKey])
+  useEffect(() => () => void (heroUrl.current && URL.revokeObjectURL(heroUrl.current)), [])
+  const previewHtml =
+    heroImg && email.hero && heroImg.key === heroKey ? withHeroImage(email.html, heroImg.url, { ...heroImg, alt: email.hero.alt }) : email.html
+
   const toggle = (address: string) =>
     setPicked((p) => {
       const next = new Set(p)
@@ -85,12 +111,14 @@ export function SendDialog({
 
     // El envío sigue en segundo plano: el diálogo se cierra y un aviso fijo dice
     // "Enviando…" hasta que el servidor termina (PDF + correo).
+    const sent = payload.build(message, CID_ASSETS)
     const body = JSON.stringify({
       to,
       cc,
       copyMe,
       subject,
-      emailHtml: payload.build(message, CID_ASSETS).html,
+      emailHtml: sent.html,
+      hero: sent.hero,
       emailText: email.text,
       attachPdf: true,
       pdfHtml: payload.pdfHtml,
@@ -158,7 +186,7 @@ export function SendDialog({
             <b>{subject}</b>
             <div className="text-ink-2">Para: {to.join(", ") || "—"}</div>
           </div>
-          <iframe title="Vista previa del correo" srcDoc={email.html} className="h-[560px] w-full border-0" />
+          <iframe title="Vista previa del correo" srcDoc={previewHtml} className="h-[560px] w-full border-0" />
         </div>
       )}
       {/* El formulario sigue montado en la vista previa: el botón Enviar lo usa */}

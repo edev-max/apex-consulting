@@ -18,13 +18,12 @@ export async function POST() {
   } = await supabase.auth.getUser()
   if (!user?.email) return NextResponse.json({ error: "La sesión venció. Vuelve a entrar." }, { status: 401 })
 
-  const [budgets, payments, settings, clients] = await Promise.all([
+  const [budgets, settings, clients] = await Promise.all([
     supabase.from("budgets").select(BUDGET_COLUMNS_NEW).eq("user_id", user.id).neq("status", "cancelled"),
-    supabase.from("budget_payments").select("*").eq("user_id", user.id),
     supabase.from("company_settings").select(SETTINGS_COLUMNS_AUTO).eq("user_id", user.id).maybeSingle(),
     supabase.from("clients").select(CLIENT_COLUMNS_NEW).eq("user_id", user.id),
   ])
-  const failed = [budgets, payments, settings, clients].find((r) => r.error)
+  const failed = [budgets, settings, clients].find((r) => r.error)
   if (failed) {
     const missing = failed.error?.code === "42703"
     return NextResponse.json(
@@ -39,7 +38,6 @@ export async function POST() {
         today: caracasToday(),
         settings: settings.data,
         budgets: budgets.data ?? [],
-        payments: payments.data ?? [],
         clients: clients.data ?? [],
       },
       {

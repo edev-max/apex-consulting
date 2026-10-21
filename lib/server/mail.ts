@@ -206,10 +206,11 @@ export function logoAttachments(): OutgoingMail["attachments"] {
   const img = (file: string, cid: string) => ({
     filename: file,
     content: fs.readFileSync(path.join(process.cwd(), "public", "email", file)),
-    contentType: "image/png",
+    contentType: file.endsWith(".gif") ? "image/gif" : "image/png",
     cid,
   })
-  return [img("apex-logo.png", "apex-logo"), img("apex-logo-blanco.png", "apex-logo-blanco")]
+  // El de arriba es animado (la cresta se dibuja); el del pie, fijo
+  return [img("apex-logo.gif", "apex-logo"), img("apex-logo-blanco.png", "apex-logo-blanco")]
 }
 
 export const safeFilename = (name: string) => name.replace(/[\\/:*?"<>|]+/g, "-")

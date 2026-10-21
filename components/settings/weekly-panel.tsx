@@ -19,7 +19,7 @@ const HOURS = Array.from({ length: 24 }, (_, h) => h)
 
 /** Envío automático semanal del estado de cuenta: cuándo sale, a quién y qué se mandó */
 export function WeeklyPanel({ className }: { className?: string }) {
-  const { settings, saveSettings, autoReady, budgets, payments, clients, emailLog, reloadEmailLog } = useData()
+  const { settings, saveSettings, autoReady, budgets, clients, emailLog, reloadEmailLog } = useData()
   const { user } = useAuth()
   const toast = useToast()
 
@@ -37,8 +37,8 @@ export function WeeklyPanel({ className }: { className?: string }) {
 
   const day = caracasToday()
   const plan = useMemo(
-    () => weeklyPlan({ budgets, payments, clients, settings: { ...settings, ...form }, today: day }),
-    [budgets, payments, clients, settings, form, day],
+    () => weeklyPlan({ budgets, clients, settings: { ...settings, ...form }, today: day }),
+    [budgets, clients, settings, form, day],
   )
   const auto = emailLog.filter((l) => l.origin !== "manual")
   const doneToday = auto.some((l) => l.origin === "auto" && caracasToday(new Date(l.created_at)) === day)

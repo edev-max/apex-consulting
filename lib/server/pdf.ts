@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import chromium from "@sparticuz/chromium"
-import puppeteer, { type Browser } from "puppeteer-core"
+import puppeteer, { type Browser, type Page } from "puppeteer-core"
 
 /* PDF idéntico al que se imprime desde el navegador: el mismo HTML del reporte
    renderizado por un Chrome sin interfaz. En Render se usa el Chromium empaquetado
@@ -38,7 +38,7 @@ const FONT_FACES = [
 
 let fontCss: string | null = null
 
-function localFontCss(): string {
+export function localFontCss(): string {
   fontCss ??= FONT_FACES.map(
     (f) =>
       `@font-face{font-family:'Mona Sans';font-style:normal;font-weight:300 900;font-stretch:75% 125%;font-display:block;` +
@@ -119,20 +119,15 @@ export async function warmPdf() {
   scheduleClose()
 }
 
-export async function htmlToPdf(html: string): Promise<Buffer> {
+/** Una pestaña del Chrome compartido (PDF y GIF de los correos); se cierra al terminar */
+export async function usePage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
   active += 1
   if (idleTimer) clearTimeout(idleTimer)
   try {
     const b = await getBrowser()
     const page = await b.newPage()
     try {
-      const doc = withLocalFonts(html)
-      // Con la fuente incrustada no hay nada que descargar: basta con "load"
-      await page.setContent(doc.html, { waitUntil: doc.local ? "load" : "networkidle0", timeout: 45_000 })
-      await page.evaluate(() => document.fonts.ready)
-      await page.emulateMediaType("print")
-      const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true })
-      return Buffer.from(pdf)
+      return await fn(page)
     } finally {
       await page.close().catch(() => {})
     }
@@ -140,4 +135,16 @@ export async function htmlToPdf(html: string): Promise<Buffer> {
     active -= 1
     scheduleClose()
   }
+}
+
+export async function htmlToPdf(html: string): Promise<Buffer> {
+  return usePage(async (page) => {
+    const doc = withLocalFonts(html)
+    // Con la fuente incrustada no hay nada que descargar: basta con "load"
+    await page.setContent(doc.html, { waitUntil: doc.local ? "load" : "networkidle0", timeout: 45_000 })
+    await page.evaluate(() => document.fonts.ready)
+    await page.emulateMediaType("print")
+    const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true })
+    return Buffer.from(pdf)
+  })
 }

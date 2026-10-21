@@ -12,6 +12,7 @@ import { addDays, dateFmt, dateLong, esc, num, plain, usd } from "./format"
 import { budgetTotal } from "./budget-math"
 import type { Settings } from "./types"
 import { advanceNote, statementTable, type BudgetDoc, type StatementBudgetRow, type StatementRow } from "./reports"
+import { heroMarked, type HeroSpec } from "./email-hero"
 
 const C = BRAND
 const SNOW = "#F3F5FB"
@@ -24,6 +25,8 @@ export interface EmailContent {
   subject: string
   html: string
   text: string
+  /** El bloque del monto como GIF animado: lo genera el servidor al enviar (lib/email-hero.ts) */
+  hero?: HeroSpec
 }
 
 /** Dónde están las imágenes del logo: rutas de la app (vista previa) o cid (correo enviado) */
@@ -32,7 +35,8 @@ export interface EmailAssets {
   logoWhite: string
 }
 
-export const PREVIEW_ASSETS: EmailAssets = { logo: "/email/apex-logo.png", logoWhite: "/email/apex-logo-blanco.png" }
+/* El logo de arriba es un GIF: la cresta se dibuja y el marcador cae en el pico (una vez) */
+export const PREVIEW_ASSETS: EmailAssets = { logo: "/email/apex-logo.gif", logoWhite: "/email/apex-logo-blanco.png" }
 export const CID_ASSETS: EmailAssets = { logo: "cid:apex-logo", logoWhite: "cid:apex-logo-blanco" }
 
 /* ---------- Piezas ---------- */
@@ -186,9 +190,22 @@ export function budgetEmail(i: BudgetEmailInput): EmailContent {
   if (adv > 0) rows.push(["Contra entrega", usd(total - adv)])
   if (i.accountBalance != null && i.accountBalance > total + 0.005) rows.push(["Saldo de tu cuenta con este cargo", `<b>${usd(i.accountBalance)}</b>`])
 
+  const advPct = doc.advance_type === "percent" ? ` ${plain(num(doc.advance_value))} %` : ""
+  const hero: HeroSpec = {
+    kind: "budget",
+    label: "Nuevo cargo a tu cuenta",
+    amount: usd(total),
+    lines: [
+      [{ t: doc.project_name }],
+      ...(adv > 0 ? [[{ t: `Anticipo${advPct}: ` }, { t: usd(adv), hl: true }, { t: ` · contra entrega ${usd(total - adv)}` }]] : []),
+    ],
+    doc: `Nº ${doc.number}`,
+    alt: `Nuevo cargo a tu cuenta: ${usd(total)}. Presupuesto Nº ${doc.number}, ${doc.project_name}.${adv > 0 ? ` Anticipo${advPct}: ${usd(adv)}.` : ""}`,
+  }
+
   const body = `${paragraphs(i.message)}
 ${spacer(6)}
-${bigBlock("Nuevo cargo a tu cuenta", usd(total), lines)}
+${heroMarked(bigBlock("Nuevo cargo a tu cuenta", usd(total), lines))}
 ${spacer(18)}
 ${facts(rows)}
 ${spacer(18)}
@@ -214,6 +231,7 @@ Apex Consulting`
     subject,
     html: frame({ title: subject, kicker: `Presupuesto Nº ${doc.number}`, hello: `Saludos, ${esc(doc.client_name)}`, body, a, s }),
     text,
+    hero,
   }
 }
 
@@ -244,10 +262,11 @@ export function defaultStatementMessage(i: { clientName: string; rows: Statement
 Si ya hiciste el pago, responde este correo con la referencia y lo registramos.`
 }
 
-/** Línea de detalle de un presupuesto: total, abonado, pendiente y el anticipo si tiene */
+/** Línea de detalle de un presupuesto: total, pendiente y el anticipo si falta pagarlo
+    (lo que el cliente ya pagó no va en el correo) */
 const budgetDetail = (x: StatementBudgetRow) => {
   const note = advanceNote(x.standing)
-  return [`Total ${usd(x.standing.total)}`, `abonado ${usd(x.standing.paid)}`, `pendiente ${usd(x.standing.pending)}`, note?.text ?? ""]
+  return [`Total ${usd(x.standing.total)}`, `pendiente ${usd(x.standing.pending)}`, note?.text ?? ""]
     .filter(Boolean)
     .join(" · ")
 }
@@ -291,9 +310,22 @@ export function statementEmail(i: StatementEmailInput): EmailContent {
     ? [`${lateCount} presupuesto${lateCount === 1 ? "" : "s"} con monto vencido`, `Saldo total pendiente: ${usd(tb.pending)}`]
     : ["Nada vencido"]
 
+  const label = isLate ? "Vencido · a pagar" : "Saldo pendiente"
+  const hero: HeroSpec = {
+    kind: "statement",
+    label,
+    amount: usd(amount),
+    lines: [[{ t: lines[0] }]],
+    bar:
+      isLate && tb.pending > 0.005
+        ? { part: tb.late / tb.pending, left: ["Vencido", usd(tb.late)], right: ["Saldo total pendiente", usd(tb.pending)] }
+        : undefined,
+    alt: `${label}: ${usd(amount)}. ${lines.join(". ")}.`,
+  }
+
   const body = `${paragraphs(i.message)}
 ${spacer(6)}
-${bigBlock(isLate ? "Vencido · a pagar" : "Saldo pendiente", usd(amount), lines)}
+${heroMarked(bigBlock(label, usd(amount), lines))}
 ${spacer(18)}
 ${budgetsTable(tb.list, tb.late, tb.pending)}
 ${spacer(18)}
@@ -328,6 +360,7 @@ Apex Consulting`
     subject,
     html: frame({ title: subject, kicker: "Estado de cuenta semanal", hello: `Saludos, ${esc(i.clientName)}`, body, a, s }),
     text,
+    hero,
   }
 }
 

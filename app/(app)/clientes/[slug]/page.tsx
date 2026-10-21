@@ -70,7 +70,6 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
 
   const storeKey = `apex:estado:${key}`
   const [charges, setCharges] = useState<Record<string, Charge>>({})
-  const [opts, setOpts] = useState({ payments: true })
   const [hydrated, setHydrated] = useState(false)
   const [mailOpen, setMailOpen] = useState(false)
 
@@ -139,10 +138,8 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
   const statement: StatementInput = {
     clientName: name,
     rows,
-    payments: own.filter((p) => included.some((b) => b.id === p.budget_id)).sort((a, b) => a.payment_date.localeCompare(b.payment_date)),
     settings,
     today: t,
-    options: opts,
   }
   const print = () => printStatement(statement)
   const emails = contactsFor(name).map((c) => c.email)
@@ -350,22 +347,6 @@ export default function ClientePage({ params }: { params: { slug: string } }) {
         )}
         {open.length > 0 && (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t-2 border-ink bg-paper px-4 py-3 text-[14px]">
-            <span className="font-semibold">Incluir en el PDF:</span>
-            {(
-              [
-                ["payments", "abonos recibidos"],
-              ] as const
-            ).map(([k, label]) => (
-              <label key={k} className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-[#0E1422]"
-                  checked={opts[k]}
-                  onChange={(e) => setOpts((o) => ({ ...o, [k]: e.target.checked }))}
-                />
-                {label}
-              </label>
-            ))}
             <div className="ml-auto flex gap-2">
               <button className="btn-paper btn-sm" onClick={print} disabled={!rows.length}>
                 <FileDown className="h-4 w-4" />

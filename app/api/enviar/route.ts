@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server"
 import { htmlToPdf } from "@/lib/server/pdf"
+import { attachHeroGif } from "@/lib/server/email-gif"
+import { cleanHero } from "@/lib/email-hero"
 import { MAILER_MISSING, logoAttachments, mailErrorMessage, mailer, replyToAddress, safeFilename } from "@/lib/server/mail"
 import { sessionClient } from "@/lib/server/supabase"
 import { EMAIL_RE, splitEmails } from "@/lib/rows"
 
 /* Envía al cliente un estado de cuenta o un presupuesto: el aviso con el logo
-   incrustado y el PDF adjunto (el mismo HTML que se imprime). Puede ir a varios
-   correos. Solo para usuarios con sesión; cada envío queda en email_log. */
+   incrustado, el bloque del monto como GIF animado y el PDF adjunto (el mismo
+   HTML que se imprime). Puede ir a varios correos. Solo para usuarios con
+   sesión; cada envío queda en email_log. */
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -23,6 +26,8 @@ interface SendRequest {
   attachPdf?: boolean
   pdfHtml: string
   filename: string
+  /** Datos del bloque del monto para el GIF animado (lib/email-hero.ts); sin esto va el bloque HTML */
+  hero?: unknown
   /** Para el registro de envíos */
   log?: { kind: "statement" | "budget"; clientName: string; budgetId?: string | null; amount?: number | null }
 }
@@ -60,7 +65,9 @@ export async function POST(request: Request) {
 
   // Tiempos de cada paso: salen en el registro del servidor y en la respuesta
   const t0 = Date.now()
-  const timing = { pdfMs: 0, sendMs: 0 }
+  const timing = { pdfMs: 0, gifMs: 0, sendMs: 0 }
+  // El GIF del monto se arma a la vez que el PDF, en otra pestaña del mismo Chrome; si falla, va el bloque HTML
+  const heroJob = attachHeroGif(body.emailHtml, cleanHero(body.hero), "enviar")
   let pdf: Buffer | null = null
   if (attachPdf) {
     try {
@@ -72,7 +79,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const attachments = logoAttachments()
+  const hero = await heroJob
+  timing.gifMs = hero.ms
+  const attachments = [...logoAttachments(), ...hero.attachments]
   if (pdf) attachments.push({ filename: safeFilename(body.filename), content: pdf, contentType: "application/pdf" })
 
   const log = async (status: "sent" | "error", error: string | null) => {
@@ -101,12 +110,12 @@ export async function POST(request: Request) {
       cc,
       bcc: body.copyMe && copy && !to.includes(copy) && !cc.includes(copy) ? [copy] : [],
       subject: body.subject.trim(),
-      html: body.emailHtml,
+      html: hero.html,
       text: body.emailText,
       attachments,
     })
     timing.sendMs = Date.now() - t1
-    console.info(`[enviar] ${transport.provider}: PDF ${timing.pdfMs} ms · correo ${timing.sendMs} ms`)
+    console.info(`[enviar] ${transport.provider}: PDF ${timing.pdfMs} ms · GIF ${timing.gifMs} ms · correo ${timing.sendMs} ms`)
     await log("sent", null)
     return NextResponse.json({ ok: true, to, messageId: id, timing })
   } catch (e: any) {

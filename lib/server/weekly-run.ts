@@ -1,9 +1,10 @@
 import { statementReport } from "@/lib/reports"
 import { CID_ASSETS, defaultStatementMessage, pdfName, statementEmail } from "@/lib/emails"
-import { toBudget, toClientRecord, toPayment, toSettings } from "@/lib/rows"
+import { toBudget, toClientRecord, toSettings } from "@/lib/rows"
 import { weeklyPlan, type WeeklyItem } from "@/lib/weekly"
 import { EPS } from "@/lib/metrics"
 import { htmlToPdf } from "./pdf"
+import { attachHeroGif } from "./email-gif"
 import { MAILER_MISSING, logoAttachments, mailErrorMessage, mailer, replyToAddress, safeFilename, type Mailer } from "./mail"
 
 /* Arma y envía el estado de cuenta semanal de cada cliente que corresponde: el
@@ -15,7 +16,6 @@ export interface WeeklyData {
   today: string
   settings: any
   budgets: any[]
-  payments: any[]
   clients: any[]
   /** Clientes que ya lo recibieron en esta corrida (reintento) */
   sent?: string[]
@@ -44,7 +44,6 @@ export async function runWeekly(
   const today = String(data.today).slice(0, 10)
   const plan = weeklyPlan({
     budgets: (data.budgets ?? []).map(toBudget),
-    payments: (data.payments ?? []).map(toPayment),
     clients: (data.clients ?? []).map(toClientRecord),
     settings,
     today,
@@ -98,16 +97,19 @@ async function sendOne(
   const subject = ctx.testTo ? `[Prueba] ${mail.subject}` : mail.subject
   const base = { client: item.name, recipients: to, subject, amount: item.late > EPS ? item.late : item.due }
 
+  // El GIF del monto sale a la vez que el PDF; si falla, el correo lleva el bloque en HTML
+  const heroJob = attachHeroGif(mail.html, mail.hero, "estados-semanales")
   let pdf: Buffer
   try {
     pdf = await ctx.render(
-      statementReport({ clientName: item.name, rows: item.rows, payments: item.payments, settings, today, options: { payments: true } }),
+      statementReport({ clientName: item.name, rows: item.rows, settings, today }),
     )
   } catch (e) {
     console.error("[estados-semanales] PDF", item.name, e)
     return { ...base, status: "error", error: "No se pudo generar el PDF." }
   }
 
+  const hero = await heroJob
   // Copia oculta a tu correo (el de las respuestas): queda constancia en tu bandeja
   const copy = replyToAddress()
   try {
@@ -115,9 +117,9 @@ async function sendOne(
       to,
       bcc: !ctx.testTo && copy && !to.includes(copy) ? [copy] : [],
       subject,
-      html: mail.html,
+      html: hero.html,
       text: mail.text,
-      attachments: [...logoAttachments(), { filename: safeFilename(filename), content: pdf, contentType: "application/pdf" }],
+      attachments: [...logoAttachments(), ...hero.attachments, { filename: safeFilename(filename), content: pdf, contentType: "application/pdf" }],
     })
     return { ...base, status: "sent" }
   } catch (e: any) {
