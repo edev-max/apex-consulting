@@ -17,7 +17,9 @@ import {
   itemNet,
 } from "./budget-math"
 import type { AdvanceType, Budget, BudgetItem, Payment, Settings } from "./types"
-import { DEFAULT_BUDGET_TERMS, methodLabel } from "./types"
+import { DEFAULT_BUDGET_TERMS, DEFAULT_SUPPORT_TERMS, SUPPORT_DAYS, SUPPORT_REVIEW_DAYS, methodLabel } from "./types"
+import { supportWindow, type SupportWindow } from "./support"
+import { APEX_SIGNER, signatureSVG } from "./signature"
 import { AGING, type AgingId } from "./metrics"
 
 const C = BRAND
@@ -97,6 +99,32 @@ table{width:100%;border-collapse:collapse;font-size:inherit}
 .box h4{font-size:13px;font-weight:800;padding:9px 13px;border-bottom:2px solid ${C.ink};background:${C.paper}}
 .box .in{padding:11px 13px}
 .box p{font-size:11px;color:${C.ink2};margin-bottom:6px}
+.support{margin-top:22px;break-inside:avoid}
+.support .in{padding:12px 15px 5px}
+.support p{font-size:11px;line-height:1.52;margin-bottom:7px}
+.support p b{color:${C.ink}}
+.tl{display:flex;align-items:flex-start;gap:16px;margin-top:14px;background:#fff;border:2px solid ${C.ink};box-shadow:5px 5px 0 ${C.ink};padding:9px 16px 6px;break-inside:avoid}
+.tl .d{font-size:9.5px;color:${C.ink2};font-weight:650;white-space:nowrap}
+.tl .d b{display:block;font-size:13px;color:${C.ink};font-weight:800;margin-top:1px}
+.tl .d.r{text-align:right}
+.tl .bar{position:relative;flex:1;padding:9px 0 17px}
+.tl .track{position:relative;height:10px;background:${C.night};border:1.5px solid ${C.ink}}
+.tl .track i{position:absolute;top:0;bottom:0;right:0;background:${C.amber}}
+.tl .rev{position:absolute;top:24px;transform:translateX(-50%);font-size:9.5px;color:${C.amber};font-weight:750;white-space:nowrap}
+.sign{margin-top:16px;break-inside:avoid}
+.accept{display:flex;gap:10px;align-items:flex-start;background:${C.amberBg};border:2px solid ${C.ink};padding:8px 13px;font-size:11px;line-height:1.5;color:${C.ink2}}
+.accept .tri{margin-top:4px}
+.accept b{color:${C.ink}}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:12px}
+.sig{background:#fff;border:2px solid ${C.ink};box-shadow:5px 5px 0 ${C.ink};padding:9px 14px 11px}
+.sig h5{font-size:12px;font-weight:800}
+.sig .who{font-size:10.5px;color:${C.ink2};margin-top:1px}
+.sig .ln{display:flex;align-items:flex-end;height:24px;border-bottom:1.5px solid ${C.ink};font-size:9.5px;color:${C.ink2};font-weight:650;padding-bottom:2px}
+.sig .ln.f{height:40px}
+.sig .ln b{margin-left:auto;font-size:12px;font-weight:750;color:${C.ink}}
+.sig .ln.f{position:relative}
+.sig .ln.f svg{position:absolute;right:0;bottom:-13px;height:60px;width:auto}
+.sig .two{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}
 .pay dt{font-size:10px;color:${C.ink2};font-weight:650}
 .pay dd{font-size:14px;font-weight:750;margin-bottom:7px}
 
@@ -260,21 +288,39 @@ ${showDiscounts ? `<td class="r">${d > 0 ? `<span class="dtag">−${plain(itemDi
 
 /* ---------- Términos y condiciones ---------- */
 
-/** Texto de Ajustes → HTML: una línea en blanco separa párrafos, **negrita**,
-    {dias} = días para pagar y {anticipo} = "el 50 %" o "un anticipo de $ 300,00".
+/** Texto de Ajustes → párrafos HTML: una línea en blanco separa párrafos y
+    **así** va en negrita; cada variable ({dias}…) se cambia por su valor.
     Se escapa antes de dar formato: lo que se escribe nunca se vuelve HTML. */
-export function termsHTML(text: string, vars: { dias: number; anticipo: string }) {
-  return (text.trim() || DEFAULT_BUDGET_TERMS)
+export function formatTerms(text: string, fallback: string, vars: [RegExp, string][], open = "<p>") {
+  return (text.trim() || fallback)
     .split(/\n\s*\n/)
-    .map(
-      (p) =>
-        `<p>${esc(p.trim())
-          .replace(/\{d[ií]as\}/gi, String(vars.dias))
-          .replace(/\{anticipo\}/gi, esc(vars.anticipo))
-          .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
-          .replace(/\n/g, "<br>")}</p>`,
-    )
+    .map((p) => {
+      let h = esc(p.trim())
+      for (const [re, v] of vars) h = h.replace(re, esc(v))
+      return `${open}${h.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>")}</p>`
+    })
     .join("")
+}
+
+/** Términos del presupuesto: {dias} = días para pagar y {anticipo} = "el 50 %" o "un anticipo de $ 300,00" */
+export function termsHTML(text: string, vars: { dias: number; anticipo: string }) {
+  return formatTerms(text, DEFAULT_BUDGET_TERMS, [
+    [/\{d[ií]as\}/gi, String(vars.dias)],
+    [/\{anticipo\}/gi, vars.anticipo],
+  ])
+}
+
+/** Términos del soporte: {soporte} = días de soporte y {revision} = días antes del cierre para la revisión */
+export function supportTermsHTML(text: string, open = "<p>") {
+  return formatTerms(
+    text,
+    DEFAULT_SUPPORT_TERMS,
+    [
+      [/\{soporte\}/gi, String(SUPPORT_DAYS)],
+      [/\{revisi[oó]n\}/gi, String(SUPPORT_REVIEW_DAYS)],
+    ],
+    open,
+  )
 }
 
 /* ---------- Anticipo ---------- */
@@ -305,6 +351,10 @@ export interface BudgetDoc extends AdvanceTerms {
   project_description?: string | null
   items: BudgetItem[]
   approved_on?: string | null
+  /** Presupuesto de proyecto: incluye soporte después de la entrega */
+  is_project?: boolean
+  support_start?: string | null
+  support_end?: string | null
 }
 
 export function budgetReport(
@@ -327,6 +377,7 @@ export function budgetReport(
   <div><div class="lbl">Vence</div><div class="val nw">${dateFmt(addDays(start, n))}</div></div>
 </div>
 ${adv > 0 ? `<div class="strip"><span class="tri"></span><span><b>${esc(advanceText(doc))}</b> al aprobar: <b>${usd(adv)}</b> · el resto, <b>${usd(total - adv)}</b>, a la entrega.</span></div>` : ""}
+${doc.is_project ? supportStrip(supportWindow(doc)) : ""}
 <div class="note">${esc(doc.project_description || "Presupuesto sujeto a disponibilidad. Forma de pago a convenir según acuerdo comercial.")}</div>
 <h2 class="sec d2"><span class="tri"></span>Detalle</h2>
 ${itemsTable(doc.items)}
@@ -340,8 +391,70 @@ ${adv > 0 ? `<div class="split"><div><div class="lbl">${esc(advanceText(doc))}</
     ${termsHTML(settings.budget_terms, { dias: n, anticipo: prepaid })}
   </div></div>
   ${payBox(settings)}
-</div>`
+</div>
+${doc.is_project ? `<div class="box support"><h4>Soporte después de la entrega</h4><div class="in">${supportTermsHTML(settings.support_terms)}</div></div>` : ""}`
   return shell({ title: `Presupuesto ${doc.number} · ${doc.project_name || doc.client_name}`, body, settings, toolbar: opts.toolbar })
+}
+
+/* ---------- Soporte de los presupuestos de proyecto ---------- */
+
+function supportStrip(w: SupportWindow | null) {
+  return `<div class="strip"><span class="tri"></span><span><b>Presupuesto de proyecto:</b> incluye <b>${SUPPORT_DAYS} días de soporte</b> ${
+    w ? `del <b>${dateFmt(w.start)}</b> al <b>${dateFmt(w.end)}</b>` : "a partir de la entrega"
+  }. Después, toda atención es mediante <b>plan de horas o pago de horas de soporte</b>.</span></div>`
+}
+
+/** Constancia de entrega y soporte: fechas, revisión recomendada, los términos del soporte y las
+    firmas. La de Apex va firmada con la fecha de envío (signedOn); la del cliente, en blanco. */
+export function supportReport(doc: BudgetDoc, settings: Settings, opts: { toolbar?: boolean; signedOn?: string } = {}) {
+  const w = supportWindow(doc)
+  const signedOn = opts.signedOn ?? new Date().toLocaleDateString("en-CA")
+  const contact = [settings.contact_email, settings.payment_phone].filter(Boolean)
+  // dónde cae la revisión en la línea de tiempo (en % del período)
+  const reviewAt = w && w.days > 0 ? Math.min(Math.max((daysBetween(w.start, w.review) / w.days) * 100, 8), 92) : 83
+  const body = `${header("Entrega y soporte", `Nº ${esc(doc.number)}`)}
+<div class="meta" style="grid-template-columns:1.35fr 1.35fr 1fr 1fr">
+  <div><div class="lbl">Cliente</div><div class="val">${esc(doc.client_name || "—")}</div></div>
+  <div><div class="lbl">Proyecto</div><div class="val">${esc(doc.project_name || "—")}</div></div>
+  <div><div class="lbl">Entrega</div><div class="val nw">${w ? dateFmt(w.start) : "—"}</div></div>
+  <div><div class="lbl">Fin del soporte</div><div class="val nw">${w ? dateFmt(w.end) : "—"}</div></div>
+</div>
+<div class="hero-row">
+  <div class="hero">
+    <div class="lbl">Soporte incluido</div>
+    <div class="amt d">${w ? w.days : SUPPORT_DAYS} días</div>
+    <div class="meta2">${w ? `Del ${dateLong(w.start)} al ${dateLong(w.end)}` : "A partir de la entrega del proyecto"}</div>
+    ${w ? `<div class="more"><span>Revisión recomendada</span><b>desde el ${dateFmt(w.review)}</b></div>` : ""}
+  </div>
+  <div class="box"><h4>Para pedir soporte</h4><div class="in"><dl class="pay">
+    ${settings.contact_email ? `<dt>Correo</dt><dd>${esc(settings.contact_email)}</dd>` : ""}
+    ${settings.payment_phone ? `<dt>Teléfono / WhatsApp</dt><dd>${esc(settings.payment_phone)}</dd>` : ""}
+    ${settings.website ? `<dt>Web</dt><dd>${esc(settings.website)}</dd>` : ""}
+    ${contact.length || settings.website ? "" : "<dd>Escríbenos por el canal de siempre</dd>"}
+  </dl></div></div>
+</div>
+${
+  w
+    ? `<div class="tl">
+  <div class="d">Entrega · inicia el soporte<b>${dateFmt(w.start)}</b></div>
+  <div class="bar"><div class="track"><i style="width:${(100 - reviewAt).toFixed(2)}%"></i></div><span class="rev" style="left:${reviewAt.toFixed(2)}%">Revisión · ${dateFmt(w.review)}</span></div>
+  <div class="d r">Termina el soporte<b>${dateFmt(w.end)}</b></div>
+</div>`
+    : ""
+}
+<div class="box support"><h4>Cómo seguimos trabajando juntos</h4><div class="in">${supportTermsHTML(settings.support_terms)}</div></div>
+<div class="sign">
+  <div class="accept"><span class="tri"></span><div><b>Conformidad y aceptación.</b> Al firmar este documento, el cliente declara que recibió el proyecto <b>${esc(doc.project_name || "descrito")}</b> y que leyó y acepta todas las condiciones de soporte aquí establecidas, en especial: que el soporte incluido cubre lo ya desarrollado; que <b>las mejoras y lo no contemplado en la solicitud se cobran por separado</b>, y que, una vez concluido el soporte, <b>toda atención requiere un plan de horas o el pago de las horas de soporte</b>, cualquiera que sea la solicitud.</div></div>
+  <div class="sigs">
+    <div class="sig"><h5>Por el cliente</h5><div class="who">${esc(doc.client_name || "")}</div>
+      <div class="ln f">Firma</div><div class="ln">Nombre y apellido</div>
+      <div class="two"><div class="ln">Cédula / RIF</div><div class="ln">Fecha</div></div></div>
+    <div class="sig"><h5>Por Apex Consulting</h5><div class="who">Entrega del proyecto</div>
+      <div class="ln f">Firma${signatureSVG(60)}</div><div class="ln">Nombre y apellido<b>${esc(APEX_SIGNER.name)}</b></div>
+      <div class="two"><div class="ln">Cargo<b>${esc(APEX_SIGNER.title)}</b></div><div class="ln">Fecha<b>${dateFmt(signedOn)}</b></div></div></div>
+  </div>
+</div>`
+  return shell({ title: `Entrega y soporte ${doc.number} · ${doc.project_name || doc.client_name}`, body, settings, toolbar: opts.toolbar })
 }
 
 /* ---------- Estado de cuenta de un cliente ---------- */

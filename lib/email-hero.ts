@@ -14,7 +14,7 @@ export interface HeroRun {
 }
 
 export interface HeroSpec {
-  kind: "statement" | "budget"
+  kind: "statement" | "budget" | "support"
   /** "Vencido · a pagar", "Saldo pendiente", "Nuevo cargo a tu cuenta" */
   label: string
   /** "$ 1.000,00" */
@@ -54,7 +54,7 @@ export function withHeroImage(html: string, src: string, img: { width: number; h
 /** Revisa lo que llega del navegador antes de dibujarlo: solo textos cortos y una proporción */
 export function cleanHero(x: any): HeroSpec | null {
   const str = (v: unknown, max: number) => (typeof v === "string" && v.length <= max ? v : null)
-  if (!x || typeof x !== "object" || (x.kind !== "statement" && x.kind !== "budget")) return null
+  if (!x || typeof x !== "object" || !["statement", "budget", "support"].includes(x.kind)) return null
   const label = str(x.label, 80)
   const amount = str(x.amount, 40)
   const alt = str(x.alt, 400)

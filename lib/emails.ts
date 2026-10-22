@@ -11,7 +11,9 @@ import { BRAND } from "./brand"
 import { addDays, dateFmt, dateLong, esc, num, plain, usd } from "./format"
 import { budgetTotal } from "./budget-math"
 import type { Settings } from "./types"
-import { advanceNote, statementTable, type BudgetDoc, type StatementBudgetRow, type StatementRow } from "./reports"
+import { advanceNote, statementTable, supportTermsHTML, type BudgetDoc, type StatementBudgetRow, type StatementRow } from "./reports"
+import { supportWindow } from "./support"
+import { DEFAULT_SUPPORT_TERMS, SUPPORT_DAYS, SUPPORT_REVIEW_DAYS } from "./types"
 import { heroMarked, type HeroSpec } from "./email-hero"
 
 const C = BRAND
@@ -372,3 +374,97 @@ export const pdfName = (...parts: string[]) =>
     .replace(/[\\/:*?"<>|\t]+/g, " ")
     .replace(/\s+/g, " ")
     .trim() + ".pdf"
+
+/* ---------- Entrega y soporte (presupuestos de proyecto) ---------- */
+
+export interface SupportEmailInput {
+  doc: BudgetDoc
+  settings: Settings
+  message: string
+  pdfName?: string
+  assets?: EmailAssets
+}
+
+export function defaultSupportMessage(doc: BudgetDoc) {
+  const w = supportWindow(doc)
+  const days = w ? w.days : SUPPORT_DAYS
+  return `Hoy cerramos una etapa importante: entregamos ${doc.project_name}. Gracias por la confianza y por todo lo que construimos juntos en este proyecto.
+
+${w ? `Desde el ${dateLong(w.start)} y hasta el ${dateLong(w.end)}` : "Desde la entrega"} cuentas con ${days} días de soporte incluido. Abajo tienes las fechas, la revisión que te recomendamos antes del cierre y cómo seguimos trabajando juntos después.
+
+Te agradecemos firmar la constancia adjunta y devolvérnosla respondiendo este correo: con tu firma confirmas la entrega y aceptas estas condiciones.`
+}
+
+/** Términos del soporte en texto plano (para la versión sin formato del correo) */
+const supportTermsText = (text: string) =>
+  (text.trim() || DEFAULT_SUPPORT_TERMS)
+    .replace(/\{soporte\}/gi, String(SUPPORT_DAYS))
+    .replace(/\{revisi[oó]n\}/gi, String(SUPPORT_REVIEW_DAYS))
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+
+export function supportEmail(i: SupportEmailInput): EmailContent {
+  const { doc, settings: s } = i
+  const a = i.assets ?? PREVIEW_ASSETS
+  const w = supportWindow(doc)
+  const days = w ? w.days : SUPPORT_DAYS
+  const range = w ? `Del ${dateFmt(w.start)} al ${dateFmt(w.end)}` : "A partir de la entrega"
+  const hero: HeroSpec = {
+    kind: "support",
+    label: "Soporte incluido",
+    amount: `${days} días`,
+    lines: [[{ t: range }], ...(w ? [[{ t: "Revisión recomendada desde el " }, { t: dateFmt(w.review), hl: true }]] : [])],
+    alt: `Soporte incluido: ${days} días. ${range}.${w ? ` Revisión recomendada desde el ${dateFmt(w.review)}.` : ""}`,
+  }
+  const rows: [string, string][] = [
+    ["Proyecto", esc(doc.project_name)],
+    ["Presupuesto", `Nº ${esc(doc.number)}`],
+    ["Inicio del soporte", w ? dateFmt(w.start) : "Con la entrega"],
+    ["Fin del soporte", w ? dateFmt(w.end) : `${days} días después`],
+  ]
+  if (w) rows.push(["Revisión recomendada", `<span style="color:${C.amber}">desde el ${dateFmt(w.review)}</span>`])
+
+  const terms = table(
+    `<tr><td style="padding:9px 14px;background:${C.paper};border-bottom:2px solid ${C.ink};font:800 13px ${FONT};color:${C.ink}">${tri}&nbsp; Cómo seguimos trabajando juntos</td></tr>
+<tr><td style="padding:14px 16px 6px">${supportTermsHTML(s.support_terms, `<p style="margin:0 0 11px;font:13.5px/1.6 ${FONT};color:${C.ink2}">`).replace(/<b>/g, `<b style="color:${C.ink}">`)}</td></tr>
+<tr><td style="padding:10px 16px;background:${C.amberBg};border-top:2px solid ${C.ink};font:13px/1.5 ${FONT};color:${C.ink}"><b>Conformidad:</b> al firmar la constancia adjunta, aceptas estas condiciones; en especial, que las mejoras y lo no contemplado en la solicitud se cobran por separado, y que al concluir el soporte incluido toda atención requiere un plan de horas o el pago de las horas de soporte.</td></tr>`,
+    `background:#ffffff;border:2px solid ${C.ink};border-right:5px solid ${C.ink};border-bottom:5px solid ${C.ink}`,
+  )
+
+  const body = `${paragraphs(i.message)}
+${spacer(6)}
+${heroMarked(bigBlock("Soporte incluido", `${days} días`, w ? [range, `Revisión recomendada desde el ${dateFmt(w.review)}`] : [range]))}
+${spacer(18)}
+${facts(rows)}
+${spacer(18)}
+${terms}
+${spacer(16)}
+${i.pdfName ? attachmentNote(i.pdfName) : ""}
+${spacer(18)}
+${signOff}
+${spacer(18)}`
+
+  const subject = w
+    ? `Entregamos ${doc.project_name}: tu soporte va del ${dateFmt(w.start)} al ${dateFmt(w.end)}`
+    : `Entregamos ${doc.project_name}: ${days} días de soporte incluido`
+  const text = `Saludos, ${doc.client_name}
+
+${i.message.trim()}
+
+Soporte incluido: ${days} días · ${range}${w ? `\nRevisión recomendada: desde el ${dateFmt(w.review)}` : ""}
+Proyecto: ${doc.project_name} · Presupuesto Nº ${doc.number}
+
+CÓMO SEGUIMOS TRABAJANDO JUNTOS
+
+${supportTermsText(s.support_terms)}
+
+Conformidad: al firmar la constancia adjunta, aceptas estas condiciones; en especial, que las mejoras y lo no contemplado en la solicitud se cobran por separado, y que al concluir el soporte incluido toda atención requiere un plan de horas o el pago de las horas de soporte.
+
+Gracias por tu confianza,
+Apex Consulting`
+  return {
+    subject,
+    html: frame({ title: subject, kicker: "Entrega y soporte", hello: `Saludos, ${esc(doc.client_name)}`, body, a, s }),
+    text,
+    hero,
+  }
+}

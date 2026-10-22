@@ -13,11 +13,13 @@ import { num, round2, today } from "@/lib/format"
 import {
   BUDGET_COLUMNS,
   BUDGET_COLUMNS_NEW,
+  BUDGET_COLUMNS_SUPPORT,
   CLIENT_COLUMNS,
   CLIENT_COLUMNS_NEW,
   SETTINGS_COLUMNS,
   SETTINGS_COLUMNS_AUTO,
   SETTINGS_COLUMNS_TERMS,
+  SETTINGS_COLUMN_SUPPORT,
   cleanContacts,
   clientRecordFor,
   toBudget,
@@ -28,6 +30,7 @@ import {
 } from "@/lib/rows"
 import {
   DEFAULT_BUDGET_TERMS,
+  DEFAULT_SUPPORT_TERMS,
   DEFAULT_SETTINGS,
   type Budget,
   type AdvanceType,
@@ -54,6 +57,8 @@ export interface BudgetInput {
   advance_value: number | null
   /** Solo al crear: el cliente ya lo aprobó */
   approved?: boolean
+  /** Presupuesto de proyecto: incluye soporte después de la entrega (migración 14) */
+  is_project?: boolean
 }
 
 export interface PaymentInput {
@@ -100,12 +105,16 @@ interface DataContext {
   autoReady: boolean
   /** true con la migración 13: términos y condiciones del presupuesto editables */
   termsReady: boolean
+  /** true con la migración 14: presupuestos de proyecto con soporte y sus términos */
+  supportReady: boolean
   reload: () => Promise<void>
   nextNumber: () => string
   createBudget: (input: BudgetInput) => Promise<Result<Budget>>
   updateBudget: (id: string, input: BudgetInput) => Promise<Result>
   setBudgetCancelled: (budget: Budget, cancelled: boolean) => Promise<Result>
   setBudgetApproved: (budget: Budget, approved: boolean) => Promise<Result>
+  /** Fechas del soporte de un presupuesto de proyecto (inicio = entrega) */
+  setBudgetSupport: (budget: Budget, support: { start: string | null; end: string | null }) => Promise<Result>
   registerPayment: (input: PaymentInput) => Promise<Result>
   saveSettings: (settings: Settings) => Promise<Result>
   saveProfile: (fullName: string) => Promise<Result>
@@ -146,6 +155,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [schemaReady, setSchemaReady] = useState(false)
   const [autoReady, setAutoReady] = useState(false)
   const [termsReady, setTermsReady] = useState(false)
+  const [supportReady, setSupportReady] = useState(false)
 
   const loadBudgets = useCallback(async () => {
     if (!user) return
@@ -156,7 +166,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         .eq("user_id", user.id)
         .order("date", { ascending: false })
         .order("number", { ascending: false })
-    let { data, error } = await query(BUDGET_COLUMNS_NEW)
+    // Con la migración 14 (proyecto y soporte), si no con la 11, si no las columnas de siempre
+    let { data, error } = await query(BUDGET_COLUMNS_SUPPORT)
+    if (error?.code === "42703") ({ data, error } = await query(BUDGET_COLUMNS_NEW))
     if (error?.code === "42703") ({ data, error } = await query(BUDGET_COLUMNS))
     if (error) throw error
     setBudgets(((data ?? []) as any[]).map(toBudget))
@@ -183,15 +195,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const auto = terms.error ? await query(SETTINGS_COLUMNS_AUTO) : terms
     const full = auto.error ? await query(SETTINGS_COLUMNS) : auto
     if (!full.error) {
+      // La 14 (condiciones del soporte) se revisa aparte: no depende de que esté la 13
+      const support = await query(SETTINGS_COLUMN_SUPPORT)
       setSchemaReady(true)
       setAutoReady(!auto.error)
       setTermsReady(!terms.error)
-      setSettings(toSettings(full.data))
+      setSupportReady(!support.error)
+      setSettings(toSettings({ ...(full.data as any), support_terms: support.error ? null : (support.data as any)?.support_terms }))
       return
     }
     setSchemaReady(false)
     setAutoReady(false)
     setTermsReady(false)
+    setSupportReady(false)
     const basic = await query("id,company_name")
     const row: any = basic.data
     setSettings({ ...DEFAULT_SETTINGS, id: row?.id, company_name: row?.company_name ?? "" })
@@ -310,15 +326,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             advance_type: input.advance_type,
             advance_value: input.advance_type ? input.advance_value : null,
           }),
+          ...(supportReady && { is_project: input.is_project === true }),
           user_id: user.id,
         })
-        .select(schemaReady ? BUDGET_COLUMNS_NEW : BUDGET_COLUMNS)
+        .select(supportReady ? BUDGET_COLUMNS_SUPPORT : schemaReady ? BUDGET_COLUMNS_NEW : BUDGET_COLUMNS)
         .single()
       if (error) return { data: null, error: message(error, "No se pudo guardar el presupuesto.") }
       await loadBudgets()
       return { data: toBudget(data), error: null }
     },
-    [user, schemaReady, loadBudgets],
+    [user, schemaReady, supportReady, loadBudgets],
   )
 
   const updateBudget = useCallback<DataContext["updateBudget"]>(
@@ -341,6 +358,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             advance_type: input.advance_type,
             advance_value: input.advance_type ? input.advance_value : null,
           }),
+          ...(supportReady && input.is_project !== undefined && { is_project: input.is_project }),
         })
         .eq("id", id)
         .eq("user_id", user.id)
@@ -348,7 +366,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await loadBudgets()
       return { data: null, error: null }
     },
-    [user, budgets, schemaReady, loadBudgets],
+    [user, budgets, schemaReady, supportReady, loadBudgets],
   )
 
   const setBudgetCancelled = useCallback<DataContext["setBudgetCancelled"]>(
@@ -382,6 +400,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       return { data: null, error: null }
     },
     [user, schemaReady, loadBudgets],
+  )
+
+  const setBudgetSupport = useCallback<DataContext["setBudgetSupport"]>(
+    async (budget, support) => {
+      if (!user) return { data: null, error: "Sin sesión." }
+      if (!supportReady) return { data: null, error: "Para guardar el soporte falta aplicar la migración 14 en la base de datos." }
+      if (support.start && support.end && support.end < support.start)
+        return { data: null, error: "El fin del soporte no puede ser antes de la entrega." }
+      const { error } = await getClient()
+        .from("budgets")
+        .update({ support_start: support.start, support_end: support.start ? support.end : null })
+        .eq("id", budget.id)
+        .eq("user_id", user.id)
+      if (error) return { data: null, error: message(error, "No se pudo guardar el soporte.") }
+      await loadBudgets()
+      return { data: null, error: null }
+    },
+    [user, supportReady, loadBudgets],
   )
 
   const registerPayment = useCallback<DataContext["registerPayment"]>(
@@ -450,6 +486,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const terms = next.budget_terms.trim()
         payload.budget_terms = terms && terms !== DEFAULT_BUDGET_TERMS ? terms : null
       }
+      if (supportReady) {
+        const terms = next.support_terms.trim()
+        payload.support_terms = terms && terms !== DEFAULT_SUPPORT_TERMS ? terms : null
+      }
       const supabase = getClient()
       const { error } = settings.id
         ? await supabase.from("company_settings").update(payload).eq("id", settings.id).eq("user_id", user.id)
@@ -458,7 +498,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await loadSettings()
       return { data: null, error: null }
     },
-    [user, schemaReady, autoReady, termsReady, settings.id, loadSettings],
+    [user, schemaReady, autoReady, termsReady, supportReady, settings.id, loadSettings],
   )
 
   const saveProfile = useCallback<DataContext["saveProfile"]>(
@@ -493,12 +533,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       schemaReady,
       autoReady,
       termsReady,
+      supportReady,
       reload,
       nextNumber,
       createBudget,
       updateBudget,
       setBudgetCancelled,
       setBudgetApproved,
+      setBudgetSupport,
       registerPayment,
       saveSettings,
       saveProfile,
@@ -520,12 +562,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       schemaReady,
       autoReady,
       termsReady,
+      supportReady,
       reload,
       nextNumber,
       createBudget,
       updateBudget,
       setBudgetCancelled,
       setBudgetApproved,
+      setBudgetSupport,
       registerPayment,
       saveSettings,
       saveProfile,

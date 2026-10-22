@@ -21,6 +21,7 @@ import {
 import { dateFmt, parseAmount, today, toInput, usd, ves } from "@/lib/format"
 import { groupNames } from "@/lib/entities"
 import type { AdvanceType, Budget, BudgetItem } from "@/lib/types"
+import { SUPPORT_DAYS } from "@/lib/types"
 
 /* Ítem en edición: los números se guardan como texto mientras se escriben */
 interface Draft {
@@ -79,7 +80,7 @@ const blank = (): Draft => ({
 export function BudgetEditor({ budget, source }: { budget?: Budget; source?: Budget }) {
   const router = useRouter()
   const toast = useToast()
-  const { budgets, settings, nextNumber, createBudget, updateBudget, schemaReady } = useData()
+  const { budgets, settings, nextNumber, createBudget, updateBudget, schemaReady, supportReady } = useData()
   const { rate, rateDate } = useRate()
   const base = budget ?? source
   const editing = !!budget
@@ -97,6 +98,7 @@ export function BudgetEditor({ budget, source }: { budget?: Budget; source?: Bud
   const [advanceType, setAdvanceType] = useState<AdvanceType>(base?.advance_type ?? "percent")
   const [advanceText, setAdvanceText] = useState(base?.advance_value ? toInput(base.advance_value) : "50")
   const [approved, setApproved] = useState(false)
+  const [isProject, setIsProject] = useState(budget?.is_project ?? false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -152,6 +154,9 @@ export function BudgetEditor({ budget, source }: { budget?: Budget; source?: Bud
     items,
     ...advance,
     approved_on: budget?.approved_on ?? (approved ? date : null),
+    is_project: isProject,
+    support_start: budget?.support_start ?? null,
+    support_end: budget?.support_end ?? null,
   }
   const html = budgetReport(doc, settings)
 
@@ -177,7 +182,7 @@ export function BudgetEditor({ budget, source }: { budget?: Budget; source?: Bud
     setSaving(true)
     if (advanceOn && !(advanceValue > 0)) return setError("Indica el anticipo o elige \"Al vencer\".")
     if (advance.advance_type === "percent" && advanceValue > 100) return setError("El anticipo no puede pasar del 100 %.")
-    const input = { number, client_name: client, project_name: project, project_description: description, date, items, ...advance, approved }
+    const input = { number, client_name: client, project_name: project, project_description: description, date, items, ...advance, approved, is_project: isProject }
     if (editing) {
       const { error } = await updateBudget(budget!.id, input)
       setSaving(false)
@@ -311,6 +316,25 @@ export function BudgetEditor({ budget, source }: { budget?: Budget; source?: Bud
                   <p className="pb-2 text-[13.5px] text-ink-2">Se cobra el total a los {settings.due_days} días de aprobado.</p>
                 )}
               </div>
+              )}
+              {supportReady && (
+                <label className="flex cursor-pointer items-start gap-3 text-[14px]">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-5 w-5 accent-[#0E1422]"
+                    checked={isProject}
+                    onChange={(e) => {
+                      setIsProject(e.target.checked)
+                      setDirty(true)
+                    }}
+                  />
+                  <span>
+                    <b>Presupuesto de proyecto</b>
+                    <span className="block text-ink-2">
+                      Incluye {SUPPORT_DAYS} días de soporte desde la entrega. El PDF lleva las condiciones del soporte, y al entregar registras las fechas y envías la constancia para firmar.
+                    </span>
+                  </span>
+                </label>
               )}
               {!editing && schemaReady && (
                 <label className="flex cursor-pointer items-start gap-3 text-[14px]">

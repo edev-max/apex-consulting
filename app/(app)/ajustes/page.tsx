@@ -8,6 +8,7 @@ import { useRate } from "@/hooks/rate"
 import { Field, PageHeader, Panel, useToast } from "@/components/ui/kit"
 import { WeeklyPanel } from "@/components/settings/weekly-panel"
 import { TermsPanel } from "@/components/settings/terms-panel"
+import { SupportTermsPanel } from "@/components/settings/support-terms-panel"
 import { dateFmt, rateFmt } from "@/lib/format"
 import type { Settings } from "@/lib/types"
 
@@ -61,7 +62,7 @@ function MailStatus() {
 }
 
 export default function AjustesPage() {
-  const { settings, profile, schemaReady, autoReady, termsReady, saveSettings, saveProfile } = useData()
+  const { settings, profile, schemaReady, autoReady, termsReady, supportReady, saveSettings, saveProfile } = useData()
   const { user, changePassword } = useAuth()
   const { rate, rateDate } = useRate()
   const toast = useToast()
@@ -93,6 +94,7 @@ export default function AjustesPage() {
       statement_scope: settings.statement_scope,
       app_url: settings.app_url,
       budget_terms: settings.budget_terms,
+      support_terms: settings.support_terms,
     })
     setSavingSettings(false)
     if (error) return setSettingsError(error)
@@ -176,6 +178,8 @@ export default function AjustesPage() {
           </Panel>
 
           <TermsPanel />
+
+          <SupportTermsPanel />
         </div>
 
         <div className="flex flex-col gap-6 xl:col-span-5">
@@ -256,6 +260,7 @@ export default function AjustesPage() {
                   {schemaReady ? <span className="tag-ok">Migración 11 aplicada</span> : <span className="tag-warn">Falta la migración 11</span>}
                   {autoReady ? <span className="tag-ok">Migración 12 aplicada</span> : <span className="tag-warn">Falta la migración 12</span>}
                   {termsReady ? <span className="tag-ok">Migración 13 aplicada</span> : <span className="tag-warn">Falta la migración 13</span>}
+                  {supportReady ? <span className="tag-ok">Migración 14 aplicada</span> : <span className="tag-warn">Falta la migración 14</span>}
                 </dd>
               </div>
               <div className="border-t border-ink/15 pt-3 text-[13px] text-ink-2">

@@ -35,6 +35,12 @@ export interface Budget {
   /** Anticipo (prepago): porcentaje del total o monto fijo en USD; null = todo al vencer */
   advance_type: AdvanceType | null
   advance_value: number | null
+  /* Presupuesto de proyecto (migración 14): incluye soporte después de la entrega */
+  is_project: boolean
+  /** Día de la entrega, cuando arranca el soporte; null = todavía no se entrega */
+  support_start: string | null
+  /** Último día del soporte incluido (por defecto, inicio + SUPPORT_DAYS) */
+  support_end: string | null
 }
 
 export type Currency = "USD" | "VES"
@@ -77,6 +83,8 @@ export interface Settings {
   app_url: string
   /** Términos y condiciones del presupuesto (migración 13); vacío = DEFAULT_BUDGET_TERMS */
   budget_terms: string
+  /** Términos del soporte de los presupuestos de proyecto (migración 14); vacío = DEFAULT_SUPPORT_TERMS */
+  support_terms: string
 }
 
 /** A quién le llega el estado de cuenta semanal: solo con vencido o todos con saldo */
@@ -149,6 +157,7 @@ export const DEFAULT_SETTINGS: Settings = {
   statement_scope: "late",
   app_url: "",
   budget_terms: "",
+  support_terms: "",
 }
 
 /** Términos con los que se imprimía el presupuesto. Una línea en blanco separa
@@ -156,3 +165,22 @@ export const DEFAULT_SETTINGS: Settings = {
 export const DEFAULT_BUDGET_TERMS = `**Modalidad post-pago:** el presupuesto cuenta con {dias} días hábiles para su cancelación a partir de su aprobación. Transcurrido dicho plazo sin recibir el pago, los montos podrán estar sujetos a modificaciones o recargos por retraso.
 
 **Modalidad prepago:** se abona {anticipo} del presupuesto al inicio del trabajo y el resto a su entrega o finalización.`
+
+/** Días de soporte incluidos en un presupuesto de proyecto, desde la entrega */
+export const SUPPORT_DAYS = 30
+/** Días antes del fin del soporte en que se recomienda la revisión final */
+export const SUPPORT_REVIEW_DAYS = 5
+
+/** Términos del soporte de los presupuestos de proyecto: van en su PDF, en el
+    aviso de entrega y en la constancia. {soporte} = días de soporte y
+    {revision} = días antes del cierre para la revisión. Sin fechas: sirven
+    igual antes de la entrega (presupuesto) que después (constancia). */
+export const DEFAULT_SUPPORT_TERMS = `A partir de la entrega cuentas con {soporte} días de soporte sin costo adicional, para que el sistema quede funcionando tal como lo acordamos. En ese período atendemos tus dudas de uso, te orientamos en lo que necesites y hacemos los ajustes técnicos sobre lo ya desarrollado, para que funcione según lo convenido.
+
+El soporte incluido cubre el proyecto tal como fue solicitado y entregado. Las **mejoras a un desarrollo ya hecho**, así como cualquier funcionalidad o detalle que **no se haya contemplado al momento de solicitarlo**, constituyen un nuevo requerimiento y **se cobran por separado**, aun dentro del período de soporte.
+
+Te recomendamos que, {revision} días antes de que termine el soporte, revisemos juntos cada parte del proyecto. Así certificamos que todo funciona como debe y, si aparece algún detalle, lo resolvemos todavía dentro del período incluido.
+
+Al concluir los {soporte} días, toda atención relacionada con el proyecto requiere **un plan de horas de soporte o el pago de las horas utilizadas**, sin excepción. Esto aplica a cualquier solicitud, sea cual sea su naturaleza u origen: una consulta o explicación de uso, una revisión técnica o de código, un ajuste, una configuración o una asesoría. Tú eliges la modalidad que mejor te acomode: un paquete de horas o el pago de las horas que uses.
+
+Este esquema nos permite atenderte siempre con la misma dedicación con la que construimos tu proyecto.`

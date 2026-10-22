@@ -8,6 +8,7 @@ import { useData } from "@/hooks/data"
 import { useRate } from "@/hooks/rate"
 import { usePaymentDialog } from "@/components/payments/payment-dialog"
 import { BudgetEditor } from "@/components/budgets/editor"
+import { SupportPanel } from "@/components/budgets/support-panel"
 import { DocPreview } from "@/components/budgets/preview"
 import { BudgetTag, Empty, Loading, PageHeader, Panel, useToast } from "@/components/ui/kit"
 import { Modal } from "@/components/ui/modal"
@@ -86,6 +87,7 @@ function BudgetView({ id }: { id: string }) {
             <span>· emitido el {dateFmt(b.date)}</span>
             {b.approved_on && isActive(b) && <span>· aprobado el {dateFmt(b.approved_on)}</span>}
             <BudgetTag budget={b} dueDays={settings.due_days} today={t} />
+            {b.is_project && <span className="tag-ink">Proyecto con soporte</span>}
           </span>
         }
         actions={
@@ -175,6 +177,8 @@ function BudgetView({ id }: { id: string }) {
               ))}
             </dl>
           </section>
+
+          {b.is_project && <SupportPanel key={`${b.id}-${b.support_start}-${b.support_end}`} budget={b} />}
 
           <Panel title="Abonos" aside={<span>{own.length ? plural(own.length, "registrado", "registrados") : ""}</span>} bodyClass="p-0">
             {own.length === 0 ? (

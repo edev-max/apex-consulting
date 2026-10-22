@@ -18,11 +18,15 @@ export const BUDGET_COLUMNS =
   "id,number,client_name,project_name,project_description,total,date,status,items,paid_amount,payment_status,created_at,updated_at"
 /** Columnas de la migración 11 (aprobación y anticipo) */
 export const BUDGET_COLUMNS_NEW = BUDGET_COLUMNS + ",approved_on,advance_type,advance_value"
+/** Columnas de la migración 14 (presupuesto de proyecto y su soporte) */
+export const BUDGET_COLUMNS_SUPPORT = BUDGET_COLUMNS_NEW + ",is_project,support_start,support_end"
 export const SETTINGS_COLUMNS = "id,company_name,payment_phone,payment_bank,payment_account,payment_id_number,contact_email,website,due_days"
 /** Columnas de la migración 12 (envío automático semanal) */
 export const SETTINGS_COLUMNS_AUTO = SETTINGS_COLUMNS + ",statement_auto,statement_weekday,statement_hour,statement_scope,app_url"
 /** Columna de la migración 13 (términos del presupuesto) */
 export const SETTINGS_COLUMNS_TERMS = SETTINGS_COLUMNS_AUTO + ",budget_terms"
+/** Columna de la migración 14 (condiciones del soporte); se lee aparte, sin depender de la 13 */
+export const SETTINGS_COLUMN_SUPPORT = "support_terms"
 export const CLIENT_COLUMNS = "id,name,email"
 export const CLIENT_COLUMNS_NEW = CLIENT_COLUMNS + ",contacts,auto_statement"
 
@@ -38,6 +42,10 @@ export function toBudget(row: any): Budget {
     approved_on: legacy ? (row.status === "cancelled" ? null : row.date) : row.approved_on ?? null,
     advance_type: row.advance_type ?? null,
     advance_value: row.advance_value == null ? null : num(row.advance_value),
+    // Sin la migración 14 ninguno es de proyecto
+    is_project: row.is_project === true,
+    support_start: row.support_start ?? null,
+    support_end: row.support_end ?? null,
   }
 }
 
@@ -74,6 +82,7 @@ export function toSettings(row: any): Settings {
     statement_scope: (r.statement_scope === "open" ? "open" : "late") as StatementScope,
     app_url: r.app_url ?? "",
     budget_terms: r.budget_terms ?? "",
+    support_terms: r.support_terms ?? "",
   }
 }
 
