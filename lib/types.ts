@@ -149,7 +149,7 @@ export const DEFAULT_SETTINGS: Settings = {
   payment_account: "01340946350001464332",
   payment_id_number: "V-26682963",
   contact_email: "edwin.dev.21114@gmail.com",
-  website: "apexconsulting-it.site",
+  website: "apexconsultingve.com",
   due_days: 7,
   statement_auto: false,
   statement_weekday: 1,
